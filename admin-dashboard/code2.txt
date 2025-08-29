@@ -1,0 +1,640 @@
+`code.txt`
+
+```
+`code.txt`
+
+```
+
+```
+
+`eslint.config.js`
+
+```javascript
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{js,jsx}'],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs['recommended-latest'],
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    },
+  },
+])
+
+```
+
+`index.html`
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+```
+
+`src/App.css`
+
+```css
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+```
+
+`src/App.jsx`
+
+```javascript
+// src/App.jsx
+
+import React, { useState } from 'react';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import LoginPage from './LoginPage.jsx';
+import Dashboard from './Dashboard.jsx';
+import theme from './theme.js';
+
+/**
+ * The main App component.
+ * It acts as the root of the application, managing authentication state
+ * and providing the global MUI theme.
+ */
+function App() {
+  // State to track if the user is logged in. Default is false.
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Function to be passed to LoginPage to handle successful login
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+  };
+
+  // Function to be passed to Dashboard to handle logout
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+  };
+
+  return (
+    // ThemeProvider applies the custom theme to all descendant components.
+    // CssBaseline provides a consistent baseline style across browsers.
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {/* Conditionally render Dashboard or LoginPage based on login state */}
+      {isLoggedIn ? (
+        <Dashboard onLogout={handleLogout} />
+      ) : (
+        <LoginPage onLogin={handleLogin} />
+      )}
+    </ThemeProvider>
+  );
+}
+
+export default App;
+
+```
+
+`src/Dashboard.jsx`
+
+```javascript
+// src/Dashboard.jsx
+
+import React, { useState, useEffect } from "react";
+import {
+  AppBar, Toolbar, Typography, Container, Box, Paper, Grid, Stack,
+  useTheme, useMediaQuery,
+  Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Card, CardContent, CardActions, Chip, CircularProgress,
+  Button,
+} from "@mui/material";
+
+import { Bloodtype, LocationCity, AddLink, Close } from "@mui/icons-material";
+
+// ✅ Dummy API functions (replace with real API calls)
+const fetchPendingPatients = async () =>
+  Promise.resolve([
+    { id: 1, name: "John Doe", blood_group: "A+", city: "Delhi" },
+    { id: 2, name: "Jane Smith", blood_group: "O-", city: "Mumbai" },
+  ]);
+
+const fetchActiveEmergencies = async () =>
+  Promise.resolve([
+    { id: 3, patient_name: "Alex", blood_group: "B+", status: "Urgent" },
+    { id: 4, patient_name: "Maria", blood_group: "AB-", status: "Open" },
+  ]);
+
+const Dashboard = ({ onLogout }) => {
+  const [tabValue, setTabValue] = useState(0);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // <600px
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md")); // 600-900px
+  const isLaptop = useMediaQuery(theme.breakpoints.between("md", "lg")); // 900-1200px
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const apiCall = tabValue === 0 ? fetchPendingPatients : fetchActiveEmergencies;
+      const result = await apiCall();
+      setData(result);
+      setLoading(false);
+    };
+    loadData();
+  }, [tabValue]);
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  // ✅ Card list for small & medium screens
+  const renderCardList = () => (
+    <Grid container spacing={2}>
+      {data.map((item) => (
+        <Grid item xs={12} sm={6} md={4} key={item.id}>
+          <Card variant="outlined" sx={{ height: "100%" }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                {tabValue === 0 ? item.name : item.patient_name}
+              </Typography>
+              <Stack direction="column" spacing={1}>
+                <Chip
+                  icon={<Bloodtype />}
+                  label={`Blood Group: ${item.blood_group}`}
+                  size="small"
+                />
+                {tabValue === 0 ? (
+                  <Chip
+                    icon={<LocationCity />}
+                    label={`City: ${item.city}`}
+                    size="small"
+                  />
+                ) : (
+                  <Chip label={`Status: ${item.status}`} color="warning" size="small" />
+                )}
+              </Stack>
+            </CardContent>
+            <CardActions sx={{ justifyContent: "flex-end" }}>
+              {tabValue === 0 ? (
+                <Button variant="contained" size="small" startIcon={<AddLink />}>
+                  Create Bridge
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  size="small"
+                  startIcon={<Close />}
+                >
+                  Close Request
+                </Button>
+              )}
+            </CardActions>
+          </Card>
+        </Grid>
+      ))}
+    </Grid>
+  );
+
+  // ✅ Table for larger screens (Laptop & Desktop)
+  const renderTable = () => (
+    <TableContainer>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>{tabValue === 0 ? "Name" : "Patient Name"}</TableCell>
+            <TableCell>Blood Group</TableCell>
+            <TableCell>{tabValue === 0 ? "City" : "Status"}</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((item) => (
+            <TableRow hover key={item.id}>
+              <TableCell>{tabValue === 0 ? item.name : item.patient_name}</TableCell>
+              <TableCell>
+                <Chip
+                  label={item.blood_group}
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                />
+              </TableCell>
+              <TableCell>
+                {tabValue === 0 ? (
+                  item.city
+                ) : (
+                  <Chip label={item.status} color="warning" size="small" />
+                )}
+              </TableCell>
+              <TableCell align="right">
+                {tabValue === 0 ? (
+                  <Button variant="contained" size="small" startIcon={<AddLink />}>
+                    Create Bridge
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    size="small"
+                    startIcon={<Close />}
+                  >
+                    Close Request
+                  </Button>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+// inside src/Dashboard.jsx — modify the JSX return where Container is used:
+
+  return (
+    <Box
+      sx={{
+        flexGrow: 1,
+        backgroundColor: theme.palette.background.default,
+        minHeight: "100vh",
+      }}
+    >
+      {/* AppBar stays full width of viewport */}
+      <AppBar position="static" sx={{ boxShadow: 1 }}>
+        <Toolbar sx={{ px: { xs: 2, md: 4 } }}>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            🩸 BloodBridge AI
+          </Typography>
+          <Button color="inherit" onClick={onLogout}>
+            Logout
+          </Button>
+        </Toolbar>
+      </AppBar>
+
+      {/* Make container span full width but keep inner content centered with a maxWidth */}
+      <Container
+        maxWidth={false}
+        disableGutters
+        sx={{
+          px: { xs: 2, md: 4 },
+          py: 4,
+        }}
+      >
+        {/* center the page content while allowing it to be fluid on small screens */}
+        <Box sx={{ width: "100%", maxWidth: 1100, mx: "auto" }}>
+          <Typography variant="h4" gutterBottom>
+            Admin Dashboard
+          </Typography>
+
+          <Paper elevation={2} sx={{ p: { xs: 2, md: 3 } }}>
+            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+              <Tabs value={tabValue} onChange={handleTabChange}>
+                <Tab label="Pending Patients" />
+                <Tab label="Active Emergencies" />
+              </Tabs>
+            </Box>
+
+            {loading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              // responsive decision: cards for small/tablet, table for larger screens
+              (isMobile || isTablet) ? renderCardList() : renderTable()
+            )}
+          </Paper>
+        </Box>
+      </Container>
+    </Box>
+  );
+
+};
+
+export default Dashboard;
+
+```
+
+`src/index.css`
+
+```css
+/* src/index.css - replace contents with this */
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: #213547;
+  background-color: #f4f6f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #f4f6f8;
+  color: #213547;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: inherit;
+}
+
+/* root should fill the viewport and let inner layout control widths */
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* small utility tweaks */
+a { color: #646cff; text-decoration: none; }
+button { font-family: inherit; }
+
+/* responsive headings */
+h1 { font-size: 2.25rem; margin: 0; }
+
+/* keep default button styles light so MUI takes precedence */
+button {
+  border: none;
+  background: none;
+}
+
+/* light/dark preference override (keeps consistent colors with MUI theme) */
+@media (prefers-color-scheme: dark) {
+  :root { background-color: #121212; color: #e6eef6; }
+}
+
+```
+
+`src/LoginPage.jsx`
+
+```javascript
+// src/LoginPage.jsx
+
+import React, { useState } from 'react';
+import { Button, TextField, Container, Typography, Box, Alert } from '@mui/material';
+
+/**
+ * The LoginPage component.
+ * It displays a simple login form and validates the password.
+ * On successful validation, it calls the onLogin prop function.
+ */
+const LoginPage = ({ onLogin }) => {
+  // State to hold the password input value
+  const [password, setPassword] = useState('');
+  // State to hold any login error messages
+  const [error, setError] = useState('');
+
+  // Handles the form submission
+  const handleSubmit = (event) => {
+    event.preventDefault(); // Prevent default form submission behavior
+
+    // Simple validation: check if the password is "admin"
+    if (password === 'admin') {
+      setError(''); // Clear any previous errors
+      onLogin(); // Call the parent component's login handler
+    } else {
+      // Set an error message for incorrect password
+      setError('Incorrect password. Hint: try "admin"');
+    }
+  };
+
+  return (
+    <Container component="main" maxWidth="xs">
+      <Box
+        sx={{
+          marginTop: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Typography component="h1" variant="h5">
+          🩸 BloodBridge AI Admin
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type="password"
+            id="password"
+            autoFocus
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {/* Display an error alert if the error state is not empty */}
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
+          >
+            Sign In
+          </Button>
+        </Box>
+      </Box>
+    </Container>
+  );
+};
+
+export default LoginPage;   
+
+```
+
+`src/main.jsx`
+
+```javascript
+// src/main.jsx
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+
+// It's good practice to have a minimal CSS reset or base styles.
+// You can leave the default index.css or make it an empty file for now.
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+```
+
+`src/mockApi.js`
+
+```javascript
+// src/mockApi.js
+
+/**
+ * This file acts as a fake backend API.
+ * The functions here simulate network requests by returning a Promise
+ * that resolves with mock data after a 500ms delay.
+ */
+
+// Mock data for the "Pending Patients" tab
+const mockPendingPatients = [
+  { "id": "p1", "name": "Aarav Sharma", "blood_group": "A+", "city": "Delhi" },
+  { "id": "p2", "name": "Saanvi Gupta", "blood_group": "O-", "city": "Mumbai" },
+  { "id": "p3", "name": "Vihaan Reddy", "blood_group": "B+", "city": "Bangalore" },
+  { "id": "p4", "name": "Diya Singh", "blood_group": "AB-", "city": "Kolkata" }
+];
+
+// Mock data for the "Active Emergencies" tab
+const mockActiveEmergencies = [
+  { "id": "e1", "patient_name": "Isha Patel", "blood_group": "AB+", "status": "Searching" },
+  { "id": "e2", "patient_name": "Rohan Kumar", "blood_group": "O+", "status": "Partially Fulfilled" },
+  { "id": "e3", "patient_name": "Ananya Joshi", "blood_group": "A-", "status": "Critical" }
+];
+
+/**
+ * Fetches a list of pending patients.
+ * @returns {Promise<Array<Object>>} A promise that resolves to the patient list.
+ */
+export const fetchPendingPatients = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(mockPendingPatients);
+    }, 500); // 500ms delay to simulate network latency
+  });
+};
+
+/**
+ * Fetches a list of active emergencies.
+ * @returns {Promise<Array<Object>>} A promise that resolves to the emergencies list.
+ */
+export const fetchActiveEmergencies = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(mockActiveEmergencies);
+    }, 500); // 500ms delay to simulate network latency
+  });
+};
+
+```
+
+`src/theme.js`
+
+```javascript
+// src/theme.js
+
+import { createTheme } from '@mui/material/styles';
+
+/**
+ * This file defines the custom color palette and theme for the application.
+ * It uses Material-UI's createTheme function to ensure consistency
+ * across all components.
+ */
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2', // A strong, professional blue
+    },
+    secondary: {
+      main: '#d32f2f', // A clear, attention-grabbing red
+    },
+    background: {
+      default: '#f4f6f8', // A very light grey for the background
+      paper: '#ffffff', // White for surfaces like cards and tables
+    },
+  },
+  typography: {
+    fontFamily: 'Roboto, Arial, sans-serif',
+    h5: {
+      fontWeight: 600,
+    },
+  },
+});
+
+export default theme;
+
+```
+
+`vite.config.js`
+
+```javascript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})
+
+```
+

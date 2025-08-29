@@ -1,0 +1,41 @@
+# ===================================================================
+# SECRETS & ENVIRONMENT VARIABLES (VERY IMPORTANT!)
+# Never commit your API keys, passwords, or secrets.
+# ===================================================================
+.env
+.env.*
+!.env.example
+
+# ===================================================================
+# NODE.JS DEPENDENCIES & BUILD OUTPUT
+# For `backend` and `admin-dashboard`
+# ===================================================================
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-error.log*
+*.log
+
+# ===================================================================
+# PYTHON VIRTUAL ENVIRONMENT & CACHE
+# For `ml_services`
+# ===================================================================
+__pycache__/
+venv/
+*.pyc
+
+# ===================================================================
+# AI & ML MODEL CACHE
+# For sentence-transformers in `ml_services`
+# ===================================================================
+.cache/
+
+# ===================================================================
+# EDITOR & OPERATING SYSTEM FILES
+# For VSCode, macOS, Windows
+# ===================================================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
