@@ -1,15 +1,23 @@
-// src/pages/Dashboard.jsx
+// admin-dashboard/src/pages/Dashboard.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   AppBar, Toolbar, Typography, Container, Box, Paper, Stack,
   useTheme, useMediaQuery,
   Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Card, CardContent, CardActions, Chip, CircularProgress, Button, Alert,
+  Badge, Grid, Snackbar
 } from "@mui/material";
 import {
   Bloodtype, LocationCity, AddLink, Close, Logout,
   PeopleAlt, Favorite, Healing, Warning,
+  Dashboard as DashboardIcon, Inbox as InboxIcon,
+  People as PeopleIcon, Emergency as EmergencyIcon,
+  Hub as HubIcon, ShowChart as ShowChartIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
+  NotificationImportant as EscalationIcon,
+  AddCircleOutline as AddCircleOutlineIcon
 } from "@mui/icons-material";
+import { createClient } from '@supabase/supabase-js';
 
 import { useAuth } from "../hooks/useAuth.js";
 import apiClient from "../api/apiClient.js";
@@ -17,256 +25,479 @@ import StatCard from "../components/dashboard/StatCard.jsx";
 import BloodGroupChart from "../components/dashboard/BloodGroupChart.jsx";
 import ConfirmationDialog from "../components/common/ConfirmationDialog.jsx";
 
-// --- Utility: Normalize API response into a clean array ---
+// --- INITIALIZE SUPABASE CLIENT ---
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 const normalizeList = (res) => {
   if (!res) return [];
   if (Array.isArray(res)) return res;
   const d = res.data;
   if (Array.isArray(d)) return d;
   if (d && Array.isArray(d.data)) return d.data;
-  if (d && typeof d === "object") {
-    for (const k of Object.keys(d)) {
-      if (Array.isArray(d[k])) return d[k];
-    }
-  }
   return [];
 };
 
-// --- Mock fallback data if API fails ---
-const MOCK_STATS = { total_donors: 0, active_donors: 0, pending_patients: 0, patients_at_risk: 0 };
-const MOCK_PATIENTS = [];
-const MOCK_EMERGENCIES = [];
-const MOCK_BLOOD_GROUPS = [];
-
-// --- Tab Panel wrapper for accessibility ---
-const TabPanel = ({ children, value, index }) => (
-  <div role="tabpanel" hidden={value !== index}>
+const TabPanel = ({ children, value, index, ...other }) => (
+  <div role="tabpanel" hidden={value !== index} {...other}>
     {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
   </div>
 );
+
+const getDueDateInfo = (dueDate) => {
+  if (!dueDate) return { text: 'N/A', color: 'text.secondary', days: Infinity };
+  const today = new Date();
+  const nextDate = new Date(dueDate);
+  today.setHours(0, 0, 0, 0);
+  nextDate.setHours(0, 0, 0, 0);
+  const diffTime = nextDate - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return { text: `OVERDUE by ${Math.abs(diffDays)} days`, color: 'error.main', days: diffDays };
+  if (diffDays === 0) return { text: 'DUE TODAY', color: 'error.main', days: diffDays };
+  if (diffDays <= 7) return { text: `Due in ${diffDays} days`, color: 'warning.main', days: diffDays };
+  return { text: `Due in ${diffDays} days`, color: 'text.primary', days: diffDays };
+};
 
 const DashboardPage = () => {
   const { logout } = useAuth();
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
-
-  // --- State ---
-  const [tabValue, setTabValue] = useState(0);
-  const [stats, setStats] = useState(null);
-  const [patients, setPatients] = useState([]);
-  const [emergencies, setEmergencies] = useState([]);
-  const [bloodGroupData, setBloodGroupData] = useState([]);
+  const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [dialog, setDialog] = useState({ open: false, title: "", message: "", onConfirm: null });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+  const [dialogConfig, setDialogConfig] = useState({ open: false, title: '', message: '', onConfirm: () => {} });
 
-  // --- Fetch Dashboard Data from API ---
-  const fetchDashboardData = useCallback(async () => {
+  const [stats, setStats] = useState({});
+  const [bloodGroupData, setBloodGroupData] = useState([]);
+  const [inboxMessages, setInboxMessages] = useState([]);
+  const [pendingPatients, setPendingPatients] = useState([]);
+  const [monitoredPatients, setMonitoredPatients] = useState([]);
+  const [emergencies, setEmergencies] = useState([]);
+  const [bridges, setBridges] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    setError("");
+    setError('');
     try {
-      const results = await Promise.allSettled([
-        apiClient.get("/api/admin/stats"),
-        apiClient.get("/api/admin/patients"),
-        apiClient.get("/api/admin/emergencies"),
-        apiClient.get("/api/admin/stats/blood-groups"),
+      const [
+        statsRes, 
+        bloodGroupRes, 
+        patientsRes, 
+        emergenciesRes, 
+        bridgesRes, 
+        inboxRes,
+        leaderboardRes
+      ] = await Promise.all([
+        apiClient.get('/api/admin/stats'),
+        apiClient.get('/api/admin/stats/blood-groups'),
+        apiClient.get('/api/admin/patients'),
+        apiClient.get('/api/admin/emergencies'),
+        apiClient.get('/api/admin/bridges'),
+        apiClient.get('/api/admin/inbox'),
+        apiClient.get('/api/admin/leaderboard')
       ]);
 
-      const [statsRes, patientsRes, emergenciesRes, bloodGroupRes] = results;
+      setStats(statsRes.data || {});
+      setBloodGroupData(bloodGroupRes.data || []);
+      setEmergencies(normalizeList(emergenciesRes));
+      setBridges(normalizeList(bridgesRes));
+      setInboxMessages(normalizeList(inboxRes));
+      setLeaderboard(normalizeList(leaderboardRes));
 
-      if (statsRes.status === "fulfilled") setStats(statsRes.value?.data ?? null);
-      if (patientsRes.status === "fulfilled") setPatients(normalizeList(patientsRes.value));
-      if (emergenciesRes.status === "fulfilled") setEmergencies(normalizeList(emergenciesRes.value));
-      if (bloodGroupRes.status === "fulfilled") setBloodGroupData(bloodGroupRes.value?.data ?? []);
-
-      // If everything failed -> use mock data
-      const allRejected = results.every((r) => r.status === "rejected");
-      if (allRejected) {
-        setError("Failed to fetch dashboard data — using fallback mock data.");
-        setStats(MOCK_STATS);
-        setPatients(MOCK_PATIENTS);
-        setEmergencies(MOCK_EMERGENCIES);
-        setBloodGroupData(MOCK_BLOOD_GROUPS);
-      }
+      const allPatients = normalizeList(patientsRes);
+      const PENDING_STATUSES = ['pending', 'pending_opt_in', 'pending_details', 'pending_verification'];
+      setPendingPatients(allPatients.filter(p => PENDING_STATUSES.includes(p.status)));
+      
+      const bridged = allPatients.filter(p => p.status === 'bridged');
+      bridged.sort((a, b) => getDueDateInfo(a.next_due_date).days - getDueDateInfo(b.next_due_date).days);
+      setMonitoredPatients(bridged);
     } catch (err) {
-      console.error("Unexpected error in fetchDashboardData:", err);
-      setError("Unexpected error. Using fallback.");
-      setStats(MOCK_STATS);
+      setError('Failed to fetch data. Your session may have expired.');
+      if (err.response && err.response.status === 401) logout();
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    fetchData();
+    if (supabaseUrl && supabaseAnonKey) {
+      const channel = supabase.channel('public-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+          console.log('Real-time change detected, refetching data...');
+          fetchData();
+        })
+        .subscribe();
+      
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [fetchData]);
 
-  // --- Tabs switch handler ---
-  const handleTabChange = useCallback((_, newValue) => setTabValue(newValue), []);
-
-  // --- Utility for API actions with refresh ---
-  const executeApiAction = useCallback(async (action, successCallback, errorCallback) => {
-    setError("");
+  const handleApiAction = async (action, successMessage) => {
     try {
-      await action();
-      if (successCallback) successCallback();
-      await fetchDashboardData();
+      const response = await action();
+      setSnackbar({ open: true, message: response.data.message || successMessage });
+      fetchData();
     } catch (err) {
-      console.error("API Action Failed:", err);
-      if (errorCallback) errorCallback(err);
-      setError(err.response?.data?.message || "An error occurred. Please try again.");
+      setSnackbar({ open: true, message: err.response?.data?.error || 'Action failed!' });
     }
-  }, [fetchDashboardData]);
+    setDialogConfig({ ...dialogConfig, open: false });
+  };
 
-  // --- Action Handlers with Confirmation Dialog ---
-  const handleCreateBridge = useCallback((patientId, patientName) => {
-    setDialog({
-      open: true,
-      title: "Confirm Bridge Creation",
-      message: `Create a new Blood Bridge for "${patientName}"? This will update the patient's status.`,
-      onConfirm: () => executeApiAction(() => apiClient.post(`/api/admin/patients/${patientId}/create-bridge`)),
-    });
-  }, [executeApiAction]);
+  const confirmAction = (title, message, action, successMessage) => {
+    setDialogConfig({ open: true, title, message, onConfirm: () => handleApiAction(action, successMessage) });
+  };
 
-  const handleCloseEmergency = useCallback((requestId, patientName) => {
-    setDialog({
-      open: true,
-      title: "Confirm Close Request",
-      message: `Close emergency request for "${patientName}"? This action cannot be undone.`,
-      onConfirm: () => executeApiAction(() => apiClient.post(`/api/admin/emergencies/${requestId}/close`)),
-    });
-  }, [executeApiAction]);
-
-  // --- Choose current tab data ---
-  const activeData = useMemo(() => (tabValue === 0 ? patients : emergencies), [tabValue, patients, emergencies]);
-  const dataKeyMap = useMemo(() => (
-    tabValue === 0
-      ? { name: "name", detail: "city", icon: <LocationCity /> }
-      : { name: "patient_name", detail: "status", icon: null }
-  ), [tabValue]);
-
-  // --- Cards (for mobile view) ---
-  const RenderCardGrid = ({ items }) => (
-    <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" } }}>
-      {items.map((item) => (
-        <Card key={item.id} variant="outlined" sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-          <CardContent sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" gutterBottom noWrap title={item[dataKeyMap.name] ?? ""}>
-              {item[dataKeyMap.name] ?? "—"}
-            </Typography>
-            <Stack direction="column" spacing={1}>
-              <Chip icon={<Bloodtype />} label={`Blood Group: ${item.blood_group ?? "N/A"}`} size="small" />
-              <Chip icon={dataKeyMap.icon} label={`${dataKeyMap.detail}: ${item[dataKeyMap.detail] ?? "N/A"}`} size="small" />
-            </Stack>
-          </CardContent>
-          <CardActions sx={{ justifyContent: "flex-end" }}>
-            {tabValue === 0 ? (
-              <Button variant="contained" size="small" startIcon={<AddLink />} onClick={() => handleCreateBridge(item.id, item.name)}>Create Bridge</Button>
-            ) : (
-              <Button variant="contained" color="secondary" size="small" startIcon={<Close />} onClick={() => handleCloseEmergency(item.id, item.patient_name)}>Close Request</Button>
-            )}
-          </CardActions>
-        </Card>
-      ))}
-    </Box>
-  );
-
-  // --- Table (for desktop view) ---
-  const RenderTable = ({ items }) => (
-    <TableContainer component={Paper} variant="outlined">
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>{tabValue === 0 ? "City" : "Status"}</TableCell>
-            <TableCell>Blood Group</TableCell>
-            <TableCell align="right">Action</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {items.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{item[dataKeyMap.name] ?? "—"}</TableCell>
-              <TableCell>{item[dataKeyMap.detail] ?? "—"}</TableCell>
-              <TableCell>{item.blood_group ?? "N/A"}</TableCell>
-              <TableCell align="right">
-                {tabValue === 0 ? (
-                  <Button size="small" startIcon={<AddLink />} onClick={() => handleCreateBridge(item.id, item.name)}>Create Bridge</Button>
-                ) : (
-                  <Button size="small" color="secondary" startIcon={<Close />} onClick={() => handleCloseEmergency(item.id, item.patient_name)}>Close</Button>
-                )}
-              </TableCell>
+  const renderLeaderboard = () => {
+    if (loading && leaderboard.length === 0) {
+      return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><CircularProgress /></Box>;
+    }
+    if (!leaderboard || leaderboard.length === 0) {
+      return <Typography sx={{ p: 3, textAlign: 'center', height: '100%' }}>No donor data for leaderboard.</Typography>;
+    }
+    return (
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Rank</TableCell>
+              <TableCell>Name</TableCell>
+              <TableCell align="right">Points</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
+          </TableHead>
+          <TableBody>
+            {leaderboard.map((donor, index) => (
+              <TableRow key={index}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{donor.name}</TableCell>
+                <TableCell align="right">{donor.gamification_points}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
 
-  // --- Decide content rendering ---
-  const renderContent = () => {
-    if (loading && !stats) {
-      return <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}><CircularProgress /></Box>;
+  const renderDuePatientsAlert = () => {
+    const duePatients = monitoredPatients.filter(p => getDueDateInfo(p.next_due_date).days <= 7);
+    
+    if (duePatients.length === 0) return null;
+    
+    return (
+      <Paper elevation={3} sx={{ p: { xs: 2, md: 3 }, mb: 4, border: 2, borderColor: 'error.main' }}>
+        <Typography variant="h6" color="error.main" gutterBottom>
+          Action Required: Patients Due for Transfusion
+        </Typography>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Due Date</TableCell>
+                <TableCell>Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {duePatients.map((p) => {
+                const dueInfo = getDueDateInfo(p.next_due_date);
+                return (
+                  <TableRow key={p.id} hover>
+                    <TableCell>{p.name}</TableCell>
+                    <TableCell>{p.next_due_date ? new Date(p.next_due_date).toLocaleDateString() : 'N/A'}</TableCell>
+                    <TableCell sx={{ color: dueInfo.color }}>{dueInfo.text}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+    );
+  };
+
+  const renderTabContent = () => {
+    switch (currentTab) {
+      case 0: // Analytics
+        return (
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '25%' } }}>
+              <StatCard icon={<PeopleIcon />} title="Total Donors" value={stats.total_donors} />
+            </Grid>
+            <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '25%' } }}>
+              <StatCard icon={<Favorite />} title="Active & Eligible" value={stats.active_donors} color="success.main" />
+            </Grid>
+            <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '25%' } }}>
+              <StatCard icon={<Warning />} title="Patients Due Soon" value={stats.patients_at_risk} color="warning.main" />
+            </Grid>
+            <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '25%' } }}>
+              <StatCard icon={<Healing />} title="Pending Patients" value={stats.pending_patients} color="info.main" />
+            </Grid>
+            
+            <Grid item sx={{ width: { xs: '100%', lg: '66%' } }}>
+              <Paper sx={{ p: 2, height: '100%' }}>
+                <Typography variant="h6" gutterBottom>Donor Blood Groups</Typography>
+                <Box sx={{ height: 320 }}>
+                  <BloodGroupChart data={bloodGroupData} />
+                </Box>
+              </Paper>
+            </Grid>
+            <Grid item sx={{ width: { xs: '100%', lg: '34%' } }}>
+              <Paper sx={{ p: 2, height: '100%' }}>
+                <Typography variant="h6" gutterBottom>Top Donors Leaderboard</Typography>
+                {renderLeaderboard()}
+              </Paper>
+            </Grid>
+          </Grid>
+        );
+      
+      case 1: // Inbox
+        return (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>User Phone</TableCell>
+                  <TableCell>Message</TableCell>
+                  <TableCell>Reason</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {inboxMessages.map((msg) => (
+                  <TableRow key={msg.id}>
+                    <TableCell>{msg.user_phone}</TableCell>
+                    <TableCell>{msg.user_message}</TableCell>
+                    <TableCell><Chip label={msg.reason} color="warning" size="small" /></TableCell>
+                    <TableCell align="right">
+                      <Button 
+                        onClick={() => confirmAction(
+                          'Confirm Resolution', 
+                          `Mark message from ${msg.user_phone} as resolved?`, 
+                          () => apiClient.post(`/api/admin/inbox/${msg.id}/resolve`), 
+                          'Message Resolved!'
+                        )} 
+                        startIcon={<CheckCircleOutlineIcon />}
+                      >
+                        Resolve
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        );
+      
+      case 2: // Pending Patients
+        return (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pendingPatients.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>{p.name}</TableCell>
+                    <TableCell><Chip label={p.status} size="small" /></TableCell>
+                    <TableCell>
+                      <Button 
+                        onClick={() => confirmAction(
+                          'Confirm Bridge Creation', 
+                          `Create a bridge for ${p.name}?`, 
+                          () => apiClient.post(`/api/admin/patients/${p.id}/create-bridge`), 
+                          'Bridge Created!'
+                        )} 
+                        startIcon={<AddCircleOutlineIcon />}
+                      >
+                        Create Bridge
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        );
+      
+      case 3: // Patient Monitor
+        return (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Patient Name</TableCell>
+                  <TableCell>Next Transfusion</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {monitoredPatients.map((p) => { 
+                  const ddi = getDueDateInfo(p.next_due_date); 
+                  return (
+                    <TableRow key={p.id} sx={{ backgroundColor: ddi.days < 0 ? 'rgba(255, 0, 0, 0.1)' : 'transparent' }}>
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell sx={{ color: ddi.color }}>{ddi.text}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        );
+      
+      case 4: // Active Emergencies
+        return (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Patient</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {emergencies.map((req) => (
+                  <TableRow key={req.id}>
+                    <TableCell>{req.patient_name}</TableCell>
+                    <TableCell>{req.status}</TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={1}>
+                        <Button 
+                          size="small" 
+                          onClick={() => confirmAction(
+                            'Confirm Closure', 
+                            `Close request for ${req.patient_name}?`, 
+                            () => apiClient.post(`/api/admin/emergencies/${req.id}/close`), 
+                            'Request Closed!'
+                          )} 
+                          startIcon={<Close />}
+                        >
+                          Close
+                        </Button>
+                        <Button 
+                          size="small" 
+                          color="warning" 
+                          onClick={() => confirmAction(
+                            'Confirm Escalation', 
+                            `Escalate request for ${req.patient_name}?`, 
+                            () => apiClient.post(`/api/admin/emergencies/${req.id}/escalate`), 
+                            'Escalation Initiated!'
+                          )} 
+                          startIcon={<EscalationIcon />}
+                        >
+                          Escalate
+                        </Button>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        );
+      
+      case 5: // Bridge Monitor
+        return (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Bridge Name</TableCell>
+                  <TableCell>Patient</TableCell>
+                  <TableCell>Members</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {bridges.map((b) => (
+                  <TableRow key={b.id}>
+                    <TableCell>{b.name}</TableCell>
+                    <TableCell>{b.patient_name}</TableCell>
+                    <TableCell>{b.member_count}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        );
+      
+      default:
+        return <div>Select a tab</div>;
     }
-    if (!activeData || activeData.length === 0) {
-      return <Typography sx={{ p: 3, textAlign: "center" }}>No data available for this view.</Typography>;
-    }
-    return isSmallScreen ? <RenderCardGrid items={activeData} /> : <RenderTable items={activeData} />;
   };
 
   return (
-    <Box sx={{ flexGrow: 1, backgroundColor: theme.palette.background.default, minHeight: "100vh" }}>
-      {/* --- Header --- */}
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>🩸 BloodBridge AI</Typography>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>🩸 BloodBridge AI Dashboard</Typography>
           <Button color="inherit" onClick={logout} startIcon={<Logout />}>Logout</Button>
         </Toolbar>
       </AppBar>
 
-      {/* --- Body --- */}
-      <Container sx={{ py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>Admin Dashboard</Typography>
-
-        {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
-
-        {/* --- Stat Cards --- */}
-        {stats && (
-          <Box sx={{ display: "grid", gap: 3, mb: 4, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" } }}>
-            <StatCard title="Total Donors" value={stats.total_donors ?? 0} icon={<PeopleAlt />} color="primary.main" />
-            <StatCard title="Active Donors" value={stats.active_donors ?? 0} icon={<Favorite />} color="success.main" />
-            <StatCard title="Pending Patients" value={stats.pending_patients ?? 0} icon={<Healing />} color="info.main" />
-            <StatCard title="Patients at Risk" value={stats.patients_at_risk ?? 0} icon={<Warning />} color="error.main" />
-          </Box>
+      <Container maxWidth="xl" sx={{ mt: 2, mb: 4, flexGrow: 1, overflowY: 'auto' }}>
+        {renderDuePatientsAlert()}
+        
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
         )}
 
-        {/* --- Main Grid (Patients/Emergencies + Blood Groups Chart) --- */}
-        <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: { xs: "1fr", lg: "2fr 1fr" }, alignItems: "start" }}>
-          <Paper elevation={2} sx={{ p: { xs: 2, md: 3 } }}>
-            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-              <Tabs value={tabValue} onChange={handleTabChange}>
-                <Tab label="Patients" />
-                <Tab label="Emergencies" />
-              </Tabs>
-            </Box>
-            <TabPanel value={tabValue} index={0}>{renderContent()}</TabPanel>
-            <TabPanel value={tabValue} index={1}>{renderContent()}</TabPanel>
-          </Paper>
+        <Paper sx={{ p: 2 }}>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs 
+              value={currentTab} 
+              onChange={(e, val) => setCurrentTab(val)} 
+              variant="scrollable" 
+              scrollButtons="auto"
+            >
+              <Tab icon={<ShowChartIcon />} label="Analytics" />
+              <Tab icon={<InboxIcon />} label={
+                <Badge badgeContent={inboxMessages.length} color="error">
+                  Inbox
+                </Badge>
+              } />
+              <Tab icon={<PeopleIcon />} label={
+                <Badge badgeContent={pendingPatients.length} color="primary">
+                  Pending Patients
+                </Badge>
+              } />
+              <Tab icon={<PeopleIcon />} label="Patient Monitor" />
+              <Tab icon={<EmergencyIcon />} label="Active Emergencies" />
+              <Tab icon={<HubIcon />} label="Bridge Monitor" />
+            </Tabs>
+          </Box>
 
-          <Paper elevation={2} sx={{ p: { xs: 2, md: 3 } }}>
-            <Typography variant="h6" gutterBottom>Donor Blood Groups</Typography>
-            <Box sx={{ minHeight: 320 }}><BloodGroupChart data={bloodGroupData} /></Box>
-          </Paper>
-        </Box>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            renderTabContent()
+          )}
+        </Paper>
       </Container>
 
-      {/* --- Confirmation Dialog --- */}
-      <ConfirmationDialog
-        open={dialog.open}
-        onClose={() => setDialog({ ...dialog, open: false })}
-        onConfirm={dialog.onConfirm}
-        title={dialog.title}
-        message={dialog.message}
+      <ConfirmationDialog 
+        {...dialogConfig} 
+        onClose={() => setDialogConfig({ ...dialogConfig, open: false })} 
+      />
+      
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={6000} 
+        onClose={() => setSnackbar({ ...snackbar, open: false })} 
+        message={snackbar.message} 
       />
     </Box>
   );

@@ -1,67 +1,39 @@
 // backend/src/services/patientService.js
 import db from '../config/db.js';
 import whatsappService from './whatsappService.js';
-import aiRouterService from './aiRouterService.js';
 import { normalizeBloodGroup } from '../utils/dataSanitizer.js';
 import { normalizePhoneNumber } from '../utils/phoneHelper.js';
 
 class PatientService {
   /**
    * Handles the initial message from a potential patient.
-   * Uses AI to pre-fill an application or starts a conversation.
+   * Creates a pending record and asks them to opt-in by replying "APPLY".
    */
   async handleNewPatient(userMessage, phone) {
     const sanitizedPhone = normalizePhoneNumber(phone);
     try {
-      const { rows: [existingUser] } = await db.query("SELECT id FROM users WHERE phone = $1", [sanitizedPhone]);
-      if (existingUser) {
-        await whatsappService.sendTextMessage(sanitizedPhone, `Welcome back! Our records show you are already registered. An admin will be in touch shortly.`);
+      const { rows: [existingPatient] } = await db.query("SELECT id FROM patients WHERE phone = $1", [sanitizedPhone]);
+      if (existingPatient) {
+        await whatsappService.sendTextMessage(sanitizedPhone, `Welcome back! Our records show you are already in our system. An admin will be in touch shortly.`);
         return;
       }
 
-      // Use the AI to attempt to extract details from the first message.
-      const route = await aiRouterService.routeMessageWithContext(userMessage, 'Unregistered');
+      // Create a blank, placeholder patient record to start the onboarding process.
+      const patientName = 'Awaiting Input';
+      const bloodGroup = 'N/A';
+      const city = 'N/A';
       
-      let patientName = 'Awaiting Input';
-      let bloodGroup = 'N/A';
-      let city = 'N/A';
+      const { rows: [newPatient] } = await db.query(
+        `INSERT INTO patients (name, phone, blood_group, city, status)
+         VALUES ($1, $2, $3, $4, 'pending_opt_in') RETURNING id;`,
+        [patientName, sanitizedPhone, bloodGroup, city]
+      );
+      
+      console.log(`New patient lead logged. Patient ID: ${newPatient.id}`);
+      
+      // Always send the same opt-in message to start the conversation.
+      await whatsappService.sendTextMessage(sanitizedPhone, `Thank you for reaching out. To begin your application for our Blood Bridge support program, please reply with: *APPLY*`);
 
-      if (route && route.tool === 'handle_patient_onboarding' && route.params.patient_name) {
-          patientName = route.params.patient_name;
-          bloodGroup = normalizeBloodGroup(route.params.blood_group) || 'N/A';
-          city = route.params.city || 'N/A';
-      }
-      
-      // Use a transaction to create both a 'user' and a 'patient' record.
-      const client = await db.pool.connect();
-      try {
-        await client.query('BEGIN');
-        const { rows: [newUser] } = await client.query(
-            `INSERT INTO users (name, phone, blood_group, city, role, user_type)
-             VALUES ($1, $2, $3, $4, 'Patient', 'patient') RETURNING id;`,
-            [patientName, sanitizedPhone, bloodGroup, city]
-        );
-        const { rows: [newPatient] } = await client.query(
-            `INSERT INTO patients (user_id, name, phone, blood_group, city, status)
-             VALUES ($1, $2, $3, $4, $5, 'pending_opt_in') RETURNING id;`,
-            [newUser.id, patientName, sanitizedPhone, bloodGroup, city]
-        );
-        await client.query('COMMIT');
-        
-        console.log(`New patient lead logged. User ID: ${newUser.id}, Patient ID: ${newPatient.id}`);
-        
-        if (patientName !== 'Awaiting Input') {
-            await db.query("UPDATE patients SET status = 'pending_verification' WHERE id = $1", [newPatient.id]);
-            await whatsappService.sendTextMessage(sanitizedPhone, `Thank you! We have pre-filled your application for *${patientName}*. An admin will contact you shortly to verify.`);
-        } else {
-            await whatsappService.sendTextMessage(sanitizedPhone, `Thank you for reaching out. To begin your application for our Blood Bridge support program, please reply with: *APPLY*`);
-        }
-      } catch (e) {
-        await client.query('ROLLBACK');
-        throw e;
-      } finally {
-        client.release();
-      }
     } catch (error) {
       console.error('Error in handleNewPatient:', error);
       await whatsappService.sendTextMessage(sanitizedPhone, 'Sorry, we encountered an error logging your request.');
@@ -73,7 +45,7 @@ class PatientService {
    */
   async startApplication(phone) {
       const { rows: [patient] } = await db.query("SELECT id FROM patients WHERE phone = $1 AND status = 'pending_opt_in'", [phone]);
-      if (!patient) return false; // Not a user waiting to apply
+      if (!patient) return false;
 
       await db.query("UPDATE patients SET status = 'pending_details' WHERE id = $1", [patient.id]);
       await this.continueOnboarding(patient.id, phone);
@@ -111,7 +83,7 @@ class PatientService {
    */
   async processOnboardingReply(message, phone) {
     const { rows: [patient] } = await db.query("SELECT * FROM patients WHERE phone = $1 AND status = 'pending_details'", [phone]);
-    if (!patient) return false; // User is not in the middle of an application.
+    if (!patient) return false;
 
     let columnToUpdate = null;
     let valueToUpdate = message;
@@ -124,11 +96,10 @@ class PatientService {
     
     if (columnToUpdate) {
         await db.query(`UPDATE patients SET ${columnToUpdate} = $1 WHERE id = $2`, [valueToUpdate, patient.id]);
-        await db.query(`UPDATE users SET ${columnToUpdate} = $1 WHERE id = $2`, [valueToUpdate, patient.user_id]);
         
         // Ask the next question after a short delay
         setTimeout(() => { this.continueOnboarding(patient.id, phone); }, 500);
-        return true; // The message was handled.
+        return true;
     }
     return false;
   }

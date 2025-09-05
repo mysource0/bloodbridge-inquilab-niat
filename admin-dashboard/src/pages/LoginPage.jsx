@@ -9,7 +9,9 @@ const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [phone, setPhone] = useState('');
+  // --- MODIFICATION: Hardcode the phone number for the demo user ---
+  // We no longer need a state for the phone number.
+  const phone = '+918000000000';
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,25 +19,27 @@ const LoginPage = () => {
   const handleLogin = async (event) => {
     event.preventDefault();
     setError('');
-
-    // Validate phone number
-    if (!/^\+91\d{10}$/.test(phone)) {
-      setError('Please enter a valid phone number with +91 (e.g., +918000000000).');
-      return;
+    
+    // Simple password validation
+    if (!password) {
+        setError('Password is required.');
+        return;
     }
 
     setLoading(true);
     try {
+      // The component now sends the hardcoded phone number and the entered password.
       console.log('Attempting login with:', { phone, password });
-
       const response = await apiClient.post('/api/admin/login', { phone, password });
 
       if (response.data?.token) {
         console.log('Login successful, token:', response.data.token);
+        // Using localStorage to persist the token across browser sessions.
         localStorage.setItem('token', response.data.token);
         login(response.data.token);
         navigate('/dashboard');
       } else {
+        // This case is unlikely if the backend is structured correctly, but good to have.
         setError('Login failed: No token received from server.');
       }
     } catch (err) {
@@ -45,14 +49,13 @@ const LoginPage = () => {
         data: err.response?.data,
       });
 
-      if (err.code === 'ECONNABORTED') {
-        setError('Request timed out. Is the backend running on http://localhost:3001?');
-      } else if (err.response?.status === 401) {
-        setError('Invalid phone number or password.');
-      } else if (err.response?.status === 500) {
-        setError('Server error. Check backend logs for details.');
+      // Provide more specific feedback to the user.
+      if (err.response?.status === 401) {
+        setError('Invalid password. Hint: try "admin123"');
+      } else if (err.code === 'ECONNABORTED' || !err.response) {
+        setError('Cannot connect to the server. Please ensure it is running.');
       } else {
-        setError(err.response?.data?.message || 'Network error. Please try again.');
+        setError(err.response?.data?.message || 'An unknown error occurred.');
       }
     } finally {
       setLoading(false);
@@ -65,20 +68,8 @@ const LoginPage = () => {
         <Typography component="h1" variant="h5">
           🩸 BloodBridge AI Admin
         </Typography>
-        <Box component="form" onSubmit={handleLogin} sx={{ mt: 3 }}>
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            id="phone"
-            label="Phone Number"
-            name="phone"
-            autoComplete="tel"
-            autoFocus
-            placeholder="+918000000000"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
+        <Box component="form" onSubmit={handleLogin} sx={{ mt: 3, width: '100%' }}>
+          {/* --- MODIFICATION: The phone number input field has been removed --- */}
           <TextField
             margin="normal"
             required
@@ -88,10 +79,11 @@ const LoginPage = () => {
             type="password"
             id="password"
             autoComplete="current-password"
+            autoFocus
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          {error && <Alert severity="error" sx={{ mt: 2, width: '100%' }}>{error}</Alert>}
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
           <Button
             type="submit"
             fullWidth
@@ -99,12 +91,7 @@ const LoginPage = () => {
             disabled={loading}
             sx={{ mt: 3, mb: 2 }}
           >
-            {loading ? (
-              <>
-                <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-                Signing In...
-              </>
-            ) : 'Sign In'}
+            {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
           </Button>
         </Box>
       </Box>
