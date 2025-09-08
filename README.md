@@ -28,13 +28,17 @@ Our mission is to eliminate the desperate, time-consuming search for blood — e
 
 ## 🏗️ System Architecture
 
-```mermaid
-graph TD
-    A[React Admin Dashboard (Vite)] -->|REST API| B[Node.js Backend (Express)]
-    B -->|Webhook| C[WhatsApp API (Meta)]
-    B -->|API Call| D[Python ML Service (FastAPI)]
-    B -->|API Call| E[Google Gemini API]
-    B --> F[Supabase DB (Postgres)]
+BloodBridge AI is built on a microservices architecture to ensure scalability, modularity, and maintainability. The system integrates multiple components to handle real-time blood donor matching, user engagement, and administrative oversight. Below is a breakdown of the architecture, including data flows and interactions between services.
+Architecture Diagram
+text[ Users (WhatsApp) ] <--> [ WhatsApp API (Meta) ] <--> [ Node.js Backend (Express) ] <--> [ Supabase DB (PostgreSQL) ]
+                                                            |
+                                                            +--> [ Google Gemini API ] (AI Orchestration)
+                                                            |
+                                                            +--> [ Python ML Service (FastAPI) ] (Donor Scoring)
+                                                            |
+[ Admin Users ] <--> [ React Admin Dashboard (Vite) ] <--+ (REST API)
+                                                            |
+                                                            +--> [ Supabase Realtime ] (Live Updat
 🛠️ Tech Stack
 Backend: Node.js, Express.js
 
