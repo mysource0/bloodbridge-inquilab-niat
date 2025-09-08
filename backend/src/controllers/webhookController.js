@@ -12,12 +12,12 @@ import aiRouterService from '../services/aiRouterService.js';
 import faqService from '../services/faqService.js';
 import gamificationService from '../services/gamificationService.js';
 import whatsappService from '../services/whatsappService.js';
+import bridgeService from '../services/bridgeService.js';
 import { normalizePhoneNumber } from '../utils/phoneHelper.js';
-// ✅ ADDING FEATURES FROM THE MORE ADVANCED VERSION
 import { detectLanguage } from '../utils/languageHelper.js';
 import translationService from '../utils/translationService.js';
-import bridgeService from '../services/bridgeService.js';
-
+import { triggerInactiveDonorNudges, triggerAutomaticBridgeRequests } from '../services/schedulerService.js';
+import loggingService from '../services/loggingService.js';
 
 /**
  * Handles the GET request from Meta for webhook verification.
@@ -69,36 +69,47 @@ const processMessage = async (messageData) => {
   // --- Text Message Processing ---
   let userMessage = messageData.text.body.trim();
   
-  // Multi-language Support
   const detectedLang = await detectLanguage(userMessage);
   if (detectedLang && detectedLang !== 'en') {
-      console.log(`Language Detected: ${detectedLang}. Translating to English...`);
       userMessage = await translationService.translateToEnglish(userMessage);
-      console.log(`Translated Message: "${userMessage}"`);
   }
   
   const lowerUserMessage = userMessage.toLowerCase();
   console.log(`--- Processing Message --- From: ${from}, Processed Message: "${userMessage}"`);
+  await loggingService.logIncoming(from, userMessage);
 
   // --- PRIORITY 1: Rigid Commands & State-Based Replies ---
-  // Patient Onboarding Flow
+  
+  // Smart parser for the multi-line donor registration format
+  const registrationDetailsMatch = userMessage.match(/(?:name|full name):\s*(?<name>.+)\s*city:\s*(?<city>.+)\s*blood group:\s*(?<blood_group>.+)/is);
+  if (registrationDetailsMatch) {
+    console.log(`✅ Message handled by: Donor Registration Details Parser.`);
+    await registrationService.completeDonorRegistration(from, registrationDetailsMatch.groups);
+    return;
+  }
+  
+  // Keyword match for DONOR registration
+  const isDonorRequest = lowerUserMessage.includes('donor') || lowerUserMessage.includes('donate');
+  if (lowerUserMessage.includes('register') && isDonorRequest && !lowerUserMessage.includes('patient')) {
+    console.log(`✅ Message handled by: Donor Registration keyword.`);
+    await registrationService.handleNewDonor({}, from);
+    return;
+  }
+
+  // Keyword match for PATIENT registration
+  if ((lowerUserMessage.includes('register') && lowerUserMessage.includes('patient')) || lowerUserMessage.includes('help for a thalassemia patient')) {
+    console.log(`✅ Message handled by: Patient Registration keyword.`);
+    await patientService.handleNewPatient({}, from);
+    return;
+  }
+
+  // Conversational flows and standard replies
   if (await patientService.processOnboardingReply(userMessage, from)) return;
   if (lowerUserMessage === 'apply' && await patientService.startApplication(from)) return;
-  
-  // Donor Response Flow
-  if (/^\d{6}$/.test(userMessage)) {
-    await responseService.verifyOTPAndConfirm(from, userMessage);
-    return;
-  }
-  if (lowerUserMessage === 'no') {
-    await responseService.handleSimpleDecline(from);
-    return;
-  }
+  if (/^\d{6}$/.test(userMessage)) { await responseService.verifyOTPAndConfirm(from, userMessage); return; }
+  if (lowerUserMessage === 'no') { await responseService.handleSimpleDecline(from); return; }
   const responseMatch = userMessage.match(/^(?:YES)\s+(\d{4})$/i);
-  if (responseMatch) {
-    await responseService.handleDonorReplyWithShortCode(from, responseMatch[1]);
-    return;
-  }
+  if (responseMatch) { await responseService.handleDonorReplyWithShortCode(from, responseMatch[1]); return; }
   if (lowerUserMessage === 'yes') {
     const { rows: [userWithCode] } = await db.query("SELECT last_request_short_code FROM users WHERE phone = $1", [from]);
     if (userWithCode && userWithCode.last_request_short_code) {
@@ -107,27 +118,49 @@ const processMessage = async (messageData) => {
     }
   }
 
-  // Demo Commands for Testing
+  // Demo commands
   if (lowerUserMessage.startsWith('/demo')) {
-    // Add logic for demo commands if needed, e.g., triggering cron jobs manually
     console.log('DEMO MODE ACTIVATED');
+    if (lowerUserMessage === '/demo nudge') {
+        await triggerInactiveDonorNudges();
+        await whatsappService.sendTextMessage(from, `🎬 Executed Inactive Donor Nudge.`);
+    } else if (lowerUserMessage === '/demo bridge_request') {
+        await triggerAutomaticBridgeRequests();
+        await whatsappService.sendTextMessage(from, `🎬 Executed Automatic Bridge Requests.`);
+    } else {
+        await whatsappService.sendTextMessage(from, `Unknown demo command.`);
+    }
     return;
   }
 
-  // --- PRIORITY 2: AI-Powered Intent Routing ---
-  console.log(`No direct keyword match found. Routing to AI to determine intent...`);
+  // --- PRIORITY 2: AI-Powered Intent Routing (with context) ---
+  console.log(`No direct keyword match found. Routing to AI with conversation context...`);
   const { rows: [user] } = await db.query('SELECT role FROM users WHERE phone = $1', [from]);
   const userRole = user ? user.role : 'Unregistered';
   
-  const route = await aiRouterService.routeMessageWithContext(userMessage, userRole);
+  const { rows: historyRows } = await db.query(
+    `SELECT message, response FROM conversations WHERE user_phone = $1 ORDER BY created_at DESC LIMIT 3`,
+    [from]
+  );
+  
+  const chatHistory = historyRows.reverse().flatMap(row => [
+    { role: 'user', parts: [{ text: row.message }] },
+    ...(row.response ? [{ role: 'model', parts: [{ text: row.response }] }] : [])
+  ]);
+
+  const route = await aiRouterService.routeMessageWithContext(userMessage, userRole, chatHistory);
+  
   if (route && route.tool) {
-    console.log(`AI routed to tool: ${route.tool} with params:`, route.params);
+    console.log(`AI routed to tool: ${route.tool}`);
     switch (route.tool) {
       case 'handle_emergency_request':
         await emergencyService.handleEmergencyRequest(userMessage, from);
         break;
       case 'handle_donor_registration':
         await registrationService.handleNewDonor(route.params, from);
+        break;
+      case 'handle_patient_onboarding':
+        await patientService.handleNewPatient(route.params, from);
         break;
       case 'get_my_dashboard': {
         const statusMessage = await gamificationService.getDonorStatus(from);
@@ -139,11 +172,15 @@ const processMessage = async (messageData) => {
         await whatsappService.sendTextMessage(from, leaderboardMessage);
         break;
       }
+      case 'handle_join_bridge_request': {
+        const msg = await bridgeService.addDonorToBridgeByPhone(from);
+        await whatsappService.sendTextMessage(from, msg);
+        break;
+      }
       case 'handle_snooze_request':
         await donorPreferenceService.handleSnooze(from, route.params);
         break;
       default:
-        console.log(`AI chose unhandled tool '${route.tool}'. Defaulting to FAQ.`);
         await faqService.handleFaq(userMessage, from);
         break;
     }
@@ -159,12 +196,11 @@ const processMessage = async (messageData) => {
  * The main entry point for the /webhook POST request.
  */
 const handleMessage = async (req, res) => {
-  res.sendStatus(200); // Acknowledge receipt to Meta immediately
+  res.sendStatus(200);
 
   try {
     const messageData = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (!messageData) {
-      // This is often just a status update from WhatsApp, not an error.
       return;
     }
 

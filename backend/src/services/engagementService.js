@@ -66,8 +66,7 @@ class EngagementService {
     }
   }
 
-
-   /**
+  /**
    * Finds active, eligible donors who have not donated in a long time
    * and sends them a personalized re-engagement message.
    */
@@ -102,41 +101,6 @@ class EngagementService {
       console.error("CRITICAL ERROR in cron job sendInactiveDonorNudges:", error);
     }
   }
-  // In backend/src/services/engagementService.js, inside the class
-
-/**
- * Finds active, eligible donors who have not donated in a long time
- * and sends them a personalized re-engagement message.
- */
-async sendInactiveDonorNudges() {
-  console.log('CRON JOB: Running Inactive Donor Nudge...');
-  try {
-    // 1. Find donors who are available but haven't donated in over 6 months (180 days).
-    const { rows: inactiveDonors } = await db.query(
-      `SELECT id, name, phone 
-       FROM users
-       WHERE 
-         user_type = 'donor' AND
-         availability_status = 'available' AND
-         dnd_status = false AND
-         (snooze_until IS NULL OR snooze_until < NOW()) AND
-         (last_donation IS NULL OR last_donation < NOW() - INTERVAL '180 days')`
-    );
-
-    if (inactiveDonors.length === 0) {
-      console.log('CRON JOB: No inactive donors to nudge this week.');
-      return;
-    }
-
-    console.log(`CRON JOB: Found ${inactiveDonors.length} inactive donors. Sending nudges...`);
-    for (const donor of inactiveDonors) {
-      const nudgeMessage = `Hi ${donor.name}! We miss you. Patients in your area are still in need of heroes like you. We hope you'll consider donating again soon. Your support makes a huge difference!`;
-      await whatsappService.sendTextMessage(donor.phone, nudgeMessage);
-    }
-  } catch (error) {
-    console.error("CRITICAL ERROR in cron job sendInactiveDonorNudges:", error);
-  }
-}
 }
 
-export default new EngagementService();
+export default new EngagementService(); 

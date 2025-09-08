@@ -229,11 +229,23 @@ export const getActiveEmergencies = async (req, res) => {
 export const getBloodBridges = async (req, res) => {
     try {
         const { rows } = await db.query(
-            `SELECT bb.id, bb.blood_group, bb.city, p.name as patient_name
-             FROM blood_bridges bb
-             JOIN patients p ON bb.patient_id = p.id
-             WHERE bb.active = true
-             ORDER BY p.name`
+            `SELECT 
+                bb.id, 
+                bb.name, -- Select the bridge's name
+                p.name as patient_name,
+                COUNT(bm.id) as member_count -- Count the members in each bridge
+             FROM 
+                blood_bridges bb
+             JOIN 
+                patients p ON bb.patient_id = p.id
+             LEFT JOIN -- Use LEFT JOIN in case a bridge has 0 members
+                bridge_members bm ON bb.id = bm.bridge_id
+             WHERE 
+                bb.active = true
+             GROUP BY -- Required when using an aggregate function like COUNT
+                bb.id, p.name
+             ORDER BY 
+                p.name`
         );
         res.json(rows);
     } catch (error) {
@@ -241,6 +253,7 @@ export const getBloodBridges = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch blood bridges.' });
     }
 };
+
 
 /**
  * Fetches patients who are due for a transfusion.
@@ -308,4 +321,22 @@ export const escalateEmergency = async (req, res) => {
     res.status(500).json({ error: error.message || 'Failed to escalate emergency.' });
   }
 };
-export const resolveInboxMessage = async (req, res) => { res.status(501).json({ message: "Not implemented" }); };
+export const resolveInboxMessage = async (req, res) => {
+  const { messageId } = req.params;
+  try {
+    const { rowCount } = await db.query(
+      "UPDATE inbox_messages SET status = 'resolved', resolved_at = NOW() WHERE id = $1 AND status = 'pending'",
+      [messageId]
+    );
+
+    if (rowCount === 0) {
+      return res.status(404).json({ message: "Pending message not found or it may have been already resolved." });
+    }
+
+    console.log(`ADMIN ACTION: Resolved inbox message ${messageId}`);
+    res.json({ success: true, message: 'Message marked as resolved.' });
+  } catch (error) {
+    console.error(`Error resolving inbox message ${messageId}:`, error);
+    res.status(500).json({ error: 'Failed to resolve message.' });
+  }
+};

@@ -1,6 +1,5 @@
 // backend/src/routes/adminRoutes.js
 import express from 'express';
-// --- FIX: Use named imports for all controller functions ---
 import {
   login,
   createBridgeForPatient,
@@ -24,14 +23,12 @@ import checkRole from '../middleware/checkRole.js';
 const router = express.Router();
 
 // Public (no auth needed)
-// --- FIX: Removed 'adminController.' prefix ---
 router.post('/login', login);
 
 // All routes below this require auth
 router.use(authMiddleware);
 
 // --- DASHBOARD GET ROUTES ---
-// --- FIX: Removed 'adminController.' prefix from all routes below ---
 router.get('/config', checkRole(['Admin']), getConfig);
 router.get('/stats', checkRole(['Admin']), getDashboardStats);
 router.get('/stats/blood-groups', checkRole(['Admin']), getBloodGroupStats);

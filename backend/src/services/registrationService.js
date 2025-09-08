@@ -1,114 +1,71 @@
 // backend/src/services/registrationService.js
 import db from '../config/db.js';
-import whatsappService from '../services/whatsappService.js';
+import whatsappService from './whatsappService.js';
 import gamificationService from './gamificationService.js';
 import { normalizePhoneNumber } from '../utils/phoneHelper.js';
 import { normalizeBloodGroup } from '../utils/dataSanitizer.js';
 
 class RegistrationService {
-  async handleNewDonor(params, phone) {
+  /**
+   * ✅ REWRITTEN: A single, intelligent function to handle all donor registration.
+   */
+    async handleNewDonor(params, phone) {
     const sanitizedPhone = normalizePhoneNumber(phone);
-
     try {
       const { rows: [existingUser] } = await db.query(
-        "SELECT id, name, city, blood_group, registration_status FROM users WHERE phone = $1",
+        "SELECT id, name, registration_status FROM users WHERE phone = $1", 
         [sanitizedPhone]
       );
 
-      const { name, city, blood_group } = params;
-
-      // ✅ CASE 1: Already registered
       if (existingUser && existingUser.registration_status === 'completed') {
-        const msg = `Welcome back, ${existingUser.name}! You are already registered and ready to help.`;
-        await whatsappService.sendTextMessage(sanitizedPhone, msg);
-        return {
-          status: 'complete',
-          user: existingUser,
-          needs: [],
-          message: msg
-        };
+        await whatsappService.sendTextMessage(sanitizedPhone, `Welcome back, ${existingUser.name}! You are already registered.`);
+        return;
       }
 
-      // ✅ CASE 2: User provides all details (complete registration in one go)
+      const { name, city, blood_group } = params;
+
+      // CASE 1: The AI successfully extracted the details from the user's message.
       if (name && name !== 'Unknown' && city && city !== 'Unknown' && blood_group && blood_group !== 'Unknown') {
         const normalizedBG = normalizeBloodGroup(blood_group);
-        let newUser;
+        
+        const { rows: [newUser] } = await db.query(
+          `INSERT INTO users(name, city, blood_group, phone, user_type, registration_status, role)
+           VALUES($1, $2, $3, $4, 'donor', 'completed', 'Emergency Donor')
+           ON CONFLICT (phone) DO UPDATE SET 
+             name = EXCLUDED.name, city = EXCLUDED.city, blood_group = EXCLUDED.blood_group, 
+             registration_status = 'completed', role = 'Emergency Donor'
+           RETURNING *;`,
+          [name.trim(), city.trim(), normalizedBG, sanitizedPhone]
+        );
 
-        if (existingUser) {
-          // Update pending → completed
-          const { rows } = await db.query(
-            `UPDATE users
-             SET name = $1, city = $2, blood_group = $3,
-                 registration_status = 'completed',
-                 role = 'Emergency Donor',
-                 user_type = 'donor'
-             WHERE id = $4
-             RETURNING *;`,
-            [name, city, normalizedBG, existingUser.id]
-          );
-          newUser = rows[0];
-        } else {
-          // Fresh complete registration
-          const { rows } = await db.query(
-            `INSERT INTO users(name, city, blood_group, phone, user_type, registration_status, role)
-             VALUES($1, $2, $3, $4, 'donor', 'completed', 'Emergency Donor')
-             RETURNING *;`,
-            [name, city, normalizedBG, sanitizedPhone]
-          );
-          newUser = rows[0];
-        }
-
-        const successMessage =
-          `✅ Registration Complete!\n\nWelcome, ${newUser.name}! ` +
-          `You are now a registered Blood Warrior in ${newUser.city}.`;
-
+        const successMessage = `✅ Registration Complete!\n\nWelcome, ${newUser.name}! You are now a registered Blood Warrior in ${newUser.city}.`;
         await whatsappService.sendTextMessage(sanitizedPhone, successMessage);
         await gamificationService.awardPoints(newUser.id, 'FIRST_REGISTRATION', sanitizedPhone);
 
-        return {
-          status: 'complete',
-          user: newUser,
-          needs: [],
-          message: successMessage
-        };
+        // ✅ NEW LOGIC: Send the interactive prompt to join a bridge.
+        const bridgeQuestion = `Would you like to join a "Blood Bridge"?\n\nThis is a dedicated group of donors who support a specific patient with regular transfusions.`;
+        const buttons = [
+            { id: `join_bridge_${newUser.id}`, title: "Yes, sign me up!" },
+            { id: `decline_bridge_${newUser.id}`, title: "Maybe later" }
+        ];
+        
+        // Use a small delay so messages arrive in the correct order
+        setTimeout(() => {
+            whatsappService.sendInteractiveMessage(sanitizedPhone, bridgeQuestion, buttons);
+        }, 1500); // 1.5 second delay
+
+        return;
       }
 
-      // ✅ CASE 3: User says "I want to register" (no details)
-      if (!existingUser) {
-        // Only create placeholder if not already present
-        console.log(`Creating a new 'pending' donor record for ${sanitizedPhone}.`);
-        await db.query(
-          `INSERT INTO users(name, phone, user_type, registration_status, role)
-           VALUES ($1, $2, 'donor', 'pending', 'Unregistered')`,
-          ['Pending User', sanitizedPhone]
-        );
-      }
-
-      const followupMessage =
-        "Thank you for your interest! To complete your registration, " +
-        "please reply with your details in this format:\n\n" +
-        "*Register: [Your Name], [Your City], [Your Blood Group]*";
-
+      // CASE 2: The AI determined the user wants to register but couldn't find the details.
+      const followupMessage = 
+        "Great! To get you registered as a donor, please reply with your Name, City, and Blood Group.";
+      
       await whatsappService.sendTextMessage(sanitizedPhone, followupMessage);
 
-      return {
-        status: 'partial',
-        user: existingUser || { phone: sanitizedPhone, registration_status: 'pending' },
-        needs: ['name', 'city', 'blood_group'],
-        message: followupMessage
-      };
     } catch (error) {
       console.error('Critical error in handleNewDonor:', error);
-
-      const errMsg = 'We encountered an error during registration. Please try again later.';
-      await whatsappService.sendTextMessage(sanitizedPhone, errMsg);
-
-      return {
-        status: 'error',
-        user: null,
-        needs: [],
-        message: errMsg
-      };
+      await whatsappService.sendTextMessage(sanitizedPhone, 'We encountered an error during registration.');
     }
   }
 }

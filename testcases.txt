@@ -1,0 +1,97 @@
+--> Scenario 1: Donor Registration & Feature Test
+
+        I want to be a blood donor
+        Register: Test Donor, Hyderabad, B+
+        my status
+        leaderboard
+        pause my notifications for 2 weeks
+
+
+--> Scenario 2: Full Emergency & Confirmation Flow
+
+        Emergency!! We need B+ blood urgently at Apollo Hospital, Hyderabad for a patient named Priya.
+
+
+--> Scenario 3: FAQ and Admin Escalation Test   
+
+        How often can I donate blood?
+        I had a bad reaction and a problem last time I donateds
+
+        
+
+## Test Suite 1: AI-Powered Message Routing & User Onboarding 
+
+
+REG-01: Happy Path: New Donor Registration (Interactive) 
+
+
+REG-02: Happy Path: New Donor Registration (One-Shot) 
+
+
+REG-03: Edge Case: Re-registration Attempt 
+
+
+REG-04: Edge Case: Patient Onboarding 
+
+
+REG-05: Failure Case: Invalid Blood Group 
+
+## Test Suite 2: Emergency Blood Request System 
+
+
+EMG-01: Happy Path: Request, Accept & Confirm 
+
+
+EMG-02: Decline & Rollover Path 
+
+
+EMG-03: Failure Case: Invalid Short Code 
+
+
+EMG-04: Failure Case: Invalid OTP 
+
+## Test Suite 3: Blood Bridge Coordination 
+
+
+BRG-01: Verify Bridge Priority in Emergencies 
+
+
+BRG-02: Join a Bridge via Chat 
+
+
+BRG-03: Attempt to Re-join a Bridge 
+
+## Test Suite 4: Donor Engagement & Preferences 
+
+
+
+ENG-01: Personalized Inactivity Nudge 
+
+
+ENG-02: Leaderboard Broadcast 
+
+
+ENG-03: Snooze Notifications 
+
+
+PREF-01: Snooze Notifications (Happy Path) 
+
+
+PREF-02: Verify Snooze is Respected 
+
+
+PREF-03: Do Not Disturb (DND) / Unsubscribe 
+
+
+PREF-04: Verify DND is Respected 
+
+
+PREF-05: Re-subscribe / Re-register 
+
+## Test Suite 5: Automated FAQ & Safety Handling 
+
+
+FAQ-01: FAQ with Live Data 
+
+
+FAQ-02: Sensitive Keyword Escalation 

@@ -27,6 +27,7 @@ function App() {
         <CssBaseline />
         <Routes>
           <Route path="/" element={<LoginPage />} />
+          
           <Route 
             path="/dashboard" 
             element={
