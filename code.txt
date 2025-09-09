@@ -1975,7 +1975,7 @@ DATABASE_URL="postgresql://postgres.psussvygzgzkkwdjqbwp:asdfusahdfuu3842r7gdsfh
 # THIRD-PARTY APIs
 # ----------------------------------
 # Paste your Gemini API key from Google AI Studio
-GEMINI_API_KEY="AIzaSyBrkoxm2wP2Wd__AGVspY9bP9G_DwZxGOg"
+GEMINI_API_KEY="AIzaSyD9hUOePwWOrNpaKXG3E3OcD3Q7Q4VZdRM"
 
 # For the local Python service
 ML_SERVICE_URL="http://localhost:8000"
@@ -1984,7 +1984,7 @@ ML_SERVICE_URL="http://localhost:8000"
 # WHATSAPP (FROM YOUR META APP)
 # ----------------------------------
 # Paste your own credentials from your Meta for Developers App
-WHATSAPP_TOKEN="EAAY5EGe8MHkBPSNKbGVvTgOUrnZBZAGOP6v7b8rz7M9iVoQsV4AicoQKInVE6zu7Ou5dSXaWhHvxJJroXSaknHBt3Jtsqd4dw3hOZABmPCVDRSPT3cJJML1U3CEBlXfgZB7aF2NG6zoY1HFqCKFYgEPEyQaFo2LacMRyWqV1KiEIWgJbaYRXsiFfYsZCwuEC7ALLGkBEZB1LA1aZB96obPX23B4JYBOvCLcGmQZBYUa5KCkZD"
+WHATSAPP_TOKEN="EAAY5EGe8MHkBPe4ASt9W4R1ZCZC1V4HXTtNnrXCbyUINSZAzMNUZAantA922ZAksA43L6xDY8H4DvvtV7HJaQ1g7sxsvFyTZCGsWL5E9jDeUYtBZAddKDzRZBgkyWC0sZCOccWbbG2GMf7zaY6p7uACWB7T5ZAjBObIKozwTJMZCCREglVg42b6zOeTIZCM0BtZC6EyqMCZC2ZA8RjWQB1ZAywfzT8k9BZA3YByP8aZCEK9K9KDLBZBSQZDZD"
 WHATSAPP_PHONE_NUMBER_ID="729824143554882"
 WHATSAPP_APP_SECRET="e94bd0c1a5619ee68b105222b0185dc6"
 WHATSAPP_VERIFY_TOKEN="inquilab_bloodai-123-2025-hackathon"
@@ -4351,6 +4351,7 @@ import { generateOTP } from '../utils/otpHelper.js';
 import gamificationService from './gamificationService.js';
 import bridgeService from './bridgeService.js';
 import BridgeCoordinationService from './bridgeCoordinationService.js';
+import emergencyService from './emergencyService.js';
 
 class ResponseService {
     /**
@@ -6740,7 +6741,7 @@ DATABASE_URL="postgresql://postgres.psussvygzgzkkwdjqbwp:asdfusahdfuu3842r7gdsfh
 # THIRD-PARTY APIs
 # ----------------------------------
 # Paste your Gemini API key from Google AI Studio
-GEMINI_API_KEY="AIzaSyBrkoxm2wP2Wd__AGVspY9bP9G_DwZxGOg"
+GEMINI_API_KEY="AIzaSyD9hUOePwWOrNpaKXG3E3OcD3Q7Q4VZdRM"
 
 # For the local Python service
 ML_SERVICE_URL="http://localhost:8000"
@@ -6749,7 +6750,7 @@ ML_SERVICE_URL="http://localhost:8000"
 # WHATSAPP (FROM YOUR META APP)
 # ----------------------------------
 # Paste your own credentials from your Meta for Developers App
-WHATSAPP_TOKEN="EAAY5EGe8MHkBPSNKbGVvTgOUrnZBZAGOP6v7b8rz7M9iVoQsV4AicoQKInVE6zu7Ou5dSXaWhHvxJJroXSaknHBt3Jtsqd4dw3hOZABmPCVDRSPT3cJJML1U3CEBlXfgZB7aF2NG6zoY1HFqCKFYgEPEyQaFo2LacMRyWqV1KiEIWgJbaYRXsiFfYsZCwuEC7ALLGkBEZB1LA1aZB96obPX23B4JYBOvCLcGmQZBYUa5KCkZD"
+WHATSAPP_TOKEN="EAAY5EGe8MHkBPe4ASt9W4R1ZCZC1V4HXTtNnrXCbyUINSZAzMNUZAantA922ZAksA43L6xDY8H4DvvtV7HJaQ1g7sxsvFyTZCGsWL5E9jDeUYtBZAddKDzRZBgkyWC0sZCOccWbbG2GMf7zaY6p7uACWB7T5ZAjBObIKozwTJMZCCREglVg42b6zOeTIZCM0BtZC6EyqMCZC2ZA8RjWQB1ZAywfzT8k9BZA3YByP8aZCEK9K9KDLBZBSQZDZD"
 WHATSAPP_PHONE_NUMBER_ID="729824143554882"
 WHATSAPP_APP_SECRET="e94bd0c1a5619ee68b105222b0185dc6"
 WHATSAPP_VERIFY_TOKEN="inquilab_bloodai-123-2025-hackathon"
@@ -9116,6 +9117,7 @@ import { generateOTP } from '../utils/otpHelper.js';
 import gamificationService from './gamificationService.js';
 import bridgeService from './bridgeService.js';
 import BridgeCoordinationService from './bridgeCoordinationService.js';
+import emergencyService from './emergencyService.js';
 
 class ResponseService {
     /**
@@ -9534,172 +9536,706 @@ export default new TranslationService();
 `db.txt`
 
 ```
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
 
-CREATE TABLE public.achievements (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid,
-  badge_type character varying NOT NULL,
-  points_awarded integer DEFAULT 0 CHECK (points_awarded >= 0),
-  earned_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT achievements_pkey PRIMARY KEY (id),
-  CONSTRAINT achievements_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+-- Create users table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    phone VARCHAR(15) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    password VARCHAR(255), -- For admin login
+    blood_group VARCHAR(5), -- e.g., 'A+', 'O-', 'AB+'
+    city VARCHAR(100),
+    pincode VARCHAR(10),
+    user_type VARCHAR(50) NOT NULL CHECK (user_type IN ('donor', 'patient', 'admin')),
+    role VARCHAR(50) DEFAULT 'Emergency Donor',
+    registration_status VARCHAR(50) DEFAULT 'completed' CHECK (registration_status IN ('pending', 'completed')),
+    availability_status VARCHAR(50) DEFAULT 'available' CHECK (availability_status IN ('available', 'unavailable', 'on_hold')),
+    dnd_status BOOLEAN DEFAULT false,
+    snooze_until TIMESTAMPTZ,
+    cooldown_until TIMESTAMPTZ,
+    last_donation DATE,
+    donations_till_date INTEGER DEFAULT 0 CHECK (donations_till_date >= 0),
+    gamification_points INTEGER DEFAULT 0 CHECK (gamification_points >= 0),
+    streak_count INTEGER DEFAULT 0 CHECK (streak_count >= 0),
+    last_ml_score REAL,
+    score_cached_at TIMESTAMPTZ,
+    last_request_short_code VARCHAR(4),
+    quiet_hours_start TIME,
+    quiet_hours_end TIME,
+    inactive_trigger_comment TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT valid_blood_group CHECK (blood_group IN ('A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Unknown'))
 );
-CREATE TABLE public.blood_bridges (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  patient_id uuid,
-  name character varying NOT NULL,
-  blood_group character varying NOT NULL CHECK (blood_group::text = ANY (ARRAY['A+'::character varying, 'A-'::character varying, 'B+'::character varying, 'B-'::character varying, 'O+'::character varying, 'O-'::character varying, 'AB+'::character varying, 'AB-'::character varying]::text[])),
-  city character varying NOT NULL,
-  rotation_position integer DEFAULT 1 CHECK (rotation_position >= 1),
-  active boolean DEFAULT true,
-  created_at timestamp with time zone DEFAULT now(),
-  active_request_id uuid,
-  CONSTRAINT blood_bridges_pkey PRIMARY KEY (id),
-  CONSTRAINT blood_bridges_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id),
-  CONSTRAINT blood_bridges_active_request_id_fkey FOREIGN KEY (active_request_id) REFERENCES public.emergency_requests(id)
+
+
+
+
+
+
+
+
+
+
+
+-- Create patients table (standalone, no user_id foreign key)
+CREATE TABLE patients (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    phone VARCHAR(15) NOT NULL UNIQUE,
+    blood_group VARCHAR(5) NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    pincode VARCHAR(10),
+    condition TEXT, -- e.g., 'thalassemia'
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'pending_verification', 'bridged', 'active')),
+    last_transfusion_date DATE,
+    frequency_in_days INTEGER CHECK (frequency_in_days > 0),
+    quantity_required INTEGER DEFAULT 1 CHECK (quantity_required > 0),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT valid_blood_group CHECK (blood_group IN ('A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'))
 );
-CREATE TABLE public.bridge_members (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  bridge_id uuid,
-  donor_id uuid,
-  position integer NOT NULL CHECK ("position" >= 0),
-  status character varying NOT NULL DEFAULT 'active'::character varying CHECK (status::text = ANY (ARRAY['active'::character varying, 'inactive'::character varying, 'skipped'::character varying]::text[])),
-  joined_at timestamp with time zone DEFAULT now(),
-  rotation_order integer,
-  CONSTRAINT bridge_members_pkey PRIMARY KEY (id),
-  CONSTRAINT bridge_members_donor_id_fkey FOREIGN KEY (donor_id) REFERENCES public.users(id),
-  CONSTRAINT bridge_members_bridge_id_fkey FOREIGN KEY (bridge_id) REFERENCES public.blood_bridges(id)
+
+-- Create emergency_requests table
+CREATE TABLE emergency_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_name VARCHAR(255) NOT NULL,
+    blood_group VARCHAR(5) NOT NULL,
+    units_needed INTEGER NOT NULL CHECK (units_needed > 0),
+    hospital_name VARCHAR(255) NOT NULL,
+    hospital_contact VARCHAR(15),
+    city VARCHAR(100) NOT NULL,
+    urgency_level VARCHAR(50) DEFAULT 'high' CHECK (urgency_level IN ('critical', 'high', 'medium')),
+    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'fulfilled', 'closed', 'escalated')),
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    requested_by_phone VARCHAR(15) NOT NULL,
+    short_code VARCHAR(4) UNIQUE,
+    units_confirmed INTEGER DEFAULT 0 CHECK (units_confirmed >= 0),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    fulfilled_at TIMESTAMPTZ,
+    CONSTRAINT valid_blood_group CHECK (blood_group IN ('A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'))
 );
-CREATE TABLE public.conversations (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid,
-  message text NOT NULL,
-  response text,
-  created_at timestamp with time zone DEFAULT now(),
-  user_phone character varying,
-  CONSTRAINT conversations_pkey PRIMARY KEY (id),
-  CONSTRAINT conversations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+
+
+
+
+
+
+-- Create blood_bridges table
+CREATE TABLE blood_bridges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID REFERENCES patients(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    blood_group VARCHAR(5) NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    rotation_position INTEGER DEFAULT 1 CHECK (rotation_position >= 1),
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT valid_blood_group CHECK (blood_group IN ('A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'))
 );
-CREATE TABLE public.donor_responses (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  donor_id uuid,
-  request_id uuid,
-  response character varying NOT NULL CHECK (response::text = ANY (ARRAY['pending'::character varying, 'accepted'::character varying, 'declined'::character varying]::text[])),
-  otp character varying,
-  otp_expires_at timestamp with time zone,
-  confirmed_at timestamp with time zone,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT donor_responses_pkey PRIMARY KEY (id),
-  CONSTRAINT donor_responses_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.emergency_requests(id),
-  CONSTRAINT donor_responses_donor_id_fkey FOREIGN KEY (donor_id) REFERENCES public.users(id)
+
+
+
+
+-- Create bridge_members table
+CREATE TABLE bridge_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    bridge_id UUID REFERENCES blood_bridges(id) ON DELETE CASCADE,
+    donor_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    status VARCHAR(50) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'skipped')),
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    rotation_order INTEGER,
+    UNIQUE(bridge_id, donor_id)
 );
-CREATE TABLE public.emergency_requests (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  patient_name character varying NOT NULL,
-  blood_group character varying NOT NULL CHECK (blood_group::text = ANY (ARRAY['A+'::character varying, 'A-'::character varying, 'B+'::character varying, 'B-'::character varying, 'O+'::character varying, 'O-'::character varying, 'AB+'::character varying, 'AB-'::character varying]::text[])),
-  units_needed integer NOT NULL CHECK (units_needed > 0),
-  hospital_name character varying NOT NULL,
-  hospital_contact character varying,
-  city character varying NOT NULL,
-  urgency_level character varying DEFAULT 'high'::character varying CHECK (urgency_level::text = ANY (ARRAY['critical'::character varying, 'high'::character varying, 'medium'::character varying]::text[])),
-  status character varying DEFAULT 'active'::character varying CHECK (status::text = ANY (ARRAY['active'::character varying, 'fulfilled'::character varying, 'closed'::character varying, 'escalated'::character varying]::text[])),
-  created_by uuid,
-  requested_by_phone character varying NOT NULL,
-  short_code character varying UNIQUE,
-  units_confirmed integer DEFAULT 0 CHECK (units_confirmed >= 0),
-  created_at timestamp with time zone DEFAULT now(),
-  fulfilled_at timestamp with time zone,
-  request_type character varying DEFAULT 'standard'::character varying CHECK (request_type::text = ANY (ARRAY['standard'::character varying, 'bridge'::character varying]::text[])),
-  bridge_id uuid,
-  latitude real,
-  longitude real,
-  patient_id uuid,
-  CONSTRAINT emergency_requests_pkey PRIMARY KEY (id),
-  CONSTRAINT emergency_requests_bridge_id_fkey FOREIGN KEY (bridge_id) REFERENCES public.blood_bridges(id),
-  CONSTRAINT emergency_requests_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id),
-  CONSTRAINT emergency_requests_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+
+
+
+
+
+
+
+
+-- Create donor_responses table
+CREATE TABLE donor_responses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    donor_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    request_id UUID REFERENCES emergency_requests(id) ON DELETE CASCADE,
+    response VARCHAR(50) NOT NULL CHECK (response IN ('pending', 'accepted', 'declined')),
+    otp VARCHAR(6),
+    otp_expires_at TIMESTAMPTZ,
+    confirmed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(donor_id, request_id)
 );
-CREATE TABLE public.inbox_messages (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_phone character varying NOT NULL,
-  user_message text NOT NULL,
-  reason character varying NOT NULL,
-  status character varying DEFAULT 'pending'::character varying CHECK (status::text = ANY (ARRAY['pending'::character varying, 'resolved'::character varying]::text[])),
-  created_at timestamp with time zone DEFAULT now(),
-  resolved_at timestamp with time zone,
-  CONSTRAINT inbox_messages_pkey PRIMARY KEY (id)
+
+
+
+
+-- Create inbox_messages table
+CREATE TABLE inbox_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_phone VARCHAR(15) NOT NULL,
+    user_message TEXT NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'resolved')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ
 );
-CREATE TABLE public.knowledge_base (
-  id integer NOT NULL DEFAULT nextval('knowledge_base_id_seq'::regclass),
-  content text NOT NULL,
-  category character varying,
-  embedding jsonb,
-  CONSTRAINT knowledge_base_pkey PRIMARY KEY (id)
+
+
+
+
+
+
+
+-- Create processed_messages table
+CREATE TABLE processed_messages (
+    message_id VARCHAR(255) PRIMARY KEY,
+    processed_at TIMESTAMPTZ DEFAULT NOW(),
+    payload JSONB
 );
-CREATE TABLE public.patients (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name character varying NOT NULL,
-  phone character varying NOT NULL UNIQUE,
-  blood_group character varying NOT NULL CHECK (blood_group::text = ANY (ARRAY['A+'::text, 'A-'::text, 'B+'::text, 'B-'::text, 'O+'::text, 'O-'::text, 'AB+'::text, 'AB-'::text, 'N/A'::text])),
-  city character varying NOT NULL,
-  pincode character varying,
-  condition text,
-  status character varying DEFAULT 'pending'::character varying CHECK (status::text = ANY (ARRAY['pending'::character varying, 'pending_opt_in'::character varying, 'pending_details'::character varying, 'pending_verification'::character varying, 'bridged'::character varying, 'active'::character varying]::text[])),
-  last_transfusion_date date,
-  frequency_in_days integer CHECK (frequency_in_days > 0),
-  quantity_required integer DEFAULT 1 CHECK (quantity_required > 0),
-  created_at timestamp with time zone DEFAULT now(),
-  user_id uuid,
-  CONSTRAINT patients_pkey PRIMARY KEY (id),
-  CONSTRAINT patients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+
+
+
+
+
+-- Create achievements table
+CREATE TABLE achievements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    badge_type VARCHAR(255) NOT NULL,
+    points_awarded INTEGER DEFAULT 0 CHECK (points_awarded >= 0),
+    earned_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE TABLE public.processed_messages (
-  message_id character varying NOT NULL,
-  processed_at timestamp with time zone DEFAULT now(),
-  payload jsonb,
-  CONSTRAINT processed_messages_pkey PRIMARY KEY (message_id)
+
+
+
+
+
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TABLE knowledge_base (
+    id SERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    category VARCHAR(255),
+    embedding JSONB -- store as [0.123, 0.456, ...]
 );
-CREATE TABLE public.schema_migrations (
-  version character varying NOT NULL,
-  applied_at timestamp with time zone DEFAULT now(),
-  description text,
-  CONSTRAINT schema_migrations_pkey PRIMARY KEY (version)
+
+
+
+
+
+
+
+-- Create schema_migrations table
+CREATE TABLE schema_migrations (
+    version VARCHAR(255) PRIMARY KEY,
+    applied_at TIMESTAMPTZ DEFAULT NOW(),
+    description TEXT
 );
-CREATE TABLE public.users (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  phone character varying NOT NULL UNIQUE,
-  name character varying NOT NULL,
-  password character varying,
-  blood_group character varying CHECK (blood_group::text = ANY (ARRAY['A+'::character varying, 'A-'::character varying, 'B+'::character varying, 'B-'::character varying, 'O+'::character varying, 'O-'::character varying, 'AB+'::character varying, 'AB-'::character varying, 'Unknown'::character varying]::text[])),
-  city character varying,
-  pincode character varying,
-  user_type character varying NOT NULL CHECK (user_type::text = ANY (ARRAY['donor'::character varying, 'patient'::character varying, 'admin'::character varying]::text[])),
-  role character varying DEFAULT 'Emergency Donor'::character varying,
-  registration_status character varying DEFAULT 'completed'::character varying CHECK (registration_status::text = ANY (ARRAY['pending'::character varying, 'completed'::character varying]::text[])),
-  availability_status character varying DEFAULT 'available'::character varying CHECK (availability_status::text = ANY (ARRAY['available'::character varying, 'unavailable'::character varying, 'on_hold'::character varying]::text[])),
-  dnd_status boolean DEFAULT false,
-  snooze_until timestamp with time zone,
-  cooldown_until timestamp with time zone,
-  last_donation date,
-  donations_till_date integer DEFAULT 0 CHECK (donations_till_date >= 0),
-  gamification_points integer DEFAULT 0 CHECK (gamification_points >= 0),
-  streak_count integer DEFAULT 0 CHECK (streak_count >= 0),
-  last_ml_score real,
-  score_cached_at timestamp with time zone,
-  last_request_short_code character varying,
-  quiet_hours_start time without time zone,
-  quiet_hours_end time without time zone,
-  inactive_trigger_comment text,
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now(),
-  notifications_received integer DEFAULT 0 CHECK (notifications_received >= 0),
-  donations_confirmed integer DEFAULT 0 CHECK (donations_confirmed >= 0),
-  latitude real,
-  longitude real,
-  CONSTRAINT users_pkey PRIMARY KEY (id)
+
+
+
+-- Create conversations table
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    response TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+
+
+
+
+
+-- Create optimized donor search function
+CREATE OR REPLACE FUNCTION find_donors_for_bridge(
+    p_city VARCHAR,
+    p_blood_group VARCHAR,
+    p_pincode VARCHAR,
+    p_limit INTEGER
+)
+RETURNS TABLE (donor_id UUID, final_score FLOAT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        u.id AS donor_id,
+        COALESCE(u.last_ml_score, 0.0) AS final_score
+    FROM users u
+    WHERE
+        u.user_type = 'donor'
+        AND u.city ILIKE p_city
+        AND u.blood_group = p_blood_group
+        AND u.availability_status = 'available'
+        AND u.dnd_status = false
+        AND (u.snooze_until IS NULL OR u.snooze_until < NOW())
+        AND u.registration_status = 'completed'
+        AND u.id NOT IN (
+            SELECT bm.donor_id
+            FROM bridge_members bm
+            JOIN blood_bridges bb ON bm.bridge_id = bb.id
+            WHERE bb.active = true
+        )
+    ORDER BY
+        COALESCE(u.last_ml_score, 0.0) DESC,
+        u.created_at ASC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+
+
+
+
+
+-- Create indexes for performance
+CREATE INDEX idx_users_phone ON users(phone);
+CREATE INDEX idx_users_blood_group ON users(blood_group);
+CREATE INDEX idx_users_city ON users(city);
+CREATE INDEX idx_users_user_type ON users(user_type);
+CREATE INDEX idx_patients_phone ON patients(phone);
+CREATE INDEX idx_emergency_requests_short_code ON emergency_requests(short_code);
+CREATE INDEX idx_bridge_members_bridge_id ON bridge_members(bridge_id);
+CREATE INDEX idx_donor_responses_donor_id ON donor_responses(donor_id);
+CREATE INDEX idx_knowledge_base_category ON knowledge_base(category);
+
+
+
+-- Enable Row-Level Security (RLS)
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE emergency_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blood_bridges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bridge_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE donor_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inbox_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE processed_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_base ENABLE ROW LEVEL SECURITY;
+ALTER TABLE schema_migrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Insert test data
+INSERT INTO users (
+    name, phone, password, blood_group, city, pincode, user_type,
+    role, registration_status, availability_status
+) VALUES (
+    'Admin User', '+918000000000', 'admin123', NULL, NULL, NULL,
+    'admin', 'admin', 'completed', 'available'
+), (
+    'Test Donor', '+911234567890', NULL, 'O+', 'Hyderabad', '500001',
+    'donor', 'Emergency Donor', 'completed', 'available'
+) ON CONFLICT (phone) DO NOTHING;
+
+INSERT INTO patients (
+    name, phone, blood_group, city, pincode, status
+) VALUES (
+    'John Doe', '+919876543210', 'A+', 'Delhi', '110001', 'pending_verification'
+) ON CONFLICT (phone) DO NOTHING;
+
+-- Insert initial schema migration
+INSERT INTO schema_migrations (version, description)
+VALUES ('2025082901', 'Initial schema for BloodBridge AI') ON CONFLICT (version) DO NOTHING;
+
+-- Enable pgvector extension for knowledge_base.embedding
+CREATE EXTENSION IF NOT EXISTS vector;
+
+
+
+
+-- FIX 1.1: Set a secure search path for the function
+ALTER FUNCTION public.find_donors_for_bridge(p_city VARCHAR, p_blood_group VARCHAR, p_pincode VARCHAR, p_limit INTEGER)
+SET search_path = public;
+
+-- FIX 1.2: Move the vector extension to its own schema
+CREATE SCHEMA IF NOT EXISTS extensions;
+ALTER EXTENSION vector SET SCHEMA extensions;
+
+
+
+-- FIX 2.1: Add default RLS policies to allow access from the backend
+
+CREATE POLICY "Allow all access for service role" ON public.achievements FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.blood_bridges FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.bridge_members FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.conversations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.donor_responses FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.emergency_requests FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.inbox_messages FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.knowledge_base FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.patients FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.processed_messages FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.schema_migrations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access for service role" ON public.users FOR ALL USING (true) WITH CHECK (true);
+
+
+
+
+-- Add a column to track if a request is from a bridge
+ALTER TABLE public.emergency_requests
+ADD COLUMN IF NOT EXISTS request_type VARCHAR(50) DEFAULT 'standard' CHECK (request_type IN ('standard', 'bridge'));
+
+-- Add a column to link the request back to the specific bridge
+ALTER TABLE public.emergency_requests
+ADD COLUMN IF NOT EXISTS bridge_id UUID REFERENCES public.blood_bridges(id) ON DELETE SET NULL;
+
+
+
+
+
+
+
+
+
+-- Insert multiple rows into the knowledge_base table
+INSERT INTO public.knowledge_base (content, category)
+VALUES
+  (
+    'A healthy individual between the ages of 18 and 60 can donate blood. They must weigh at least 50 kg and should not have any tattoos or piercings done in the last 6 months. They should not have any major illnesses or be on any medication.',
+    'Eligibility'
+  ),
+  (
+    'BloodBridge AI is an initiative by the Blood Warriors Foundation, an NGO dedicated to supporting Thalassemia patients and streamlining emergency blood donations through technology. Our main operations are in Hyderabad, but we are expanding to other cities.',
+    'About Us'
+  ),
+  (
+    'To become a blood donor, you can simply send ''Register'' or ''I want to donate'' on WhatsApp. Our chatbot will then ask for your name, city, and blood group to complete the registration. The entire process takes less than a minute.',
+    'Registration Process'
+  ),
+  (
+    'Thalassemia is a genetic blood disorder that requires patients to have regular blood transfusions, often every 2-4 weeks, to survive. Our ''Blood Bridge'' program is specifically designed to provide a reliable supply of blood for these patients.',
+    'Thalassemia'
+  );
+
+
+
+-- Add latitude and longitude columns to store location data for emergencies
+ALTER TABLE public.emergency_requests
+ADD COLUMN IF NOT EXISTS latitude REAL,
+ADD COLUMN IF NOT EXISTS longitude REAL;
+
+
+
+
+ALTER TABLE public.users
+ADD COLUMN IF NOT EXISTS notifications_received INTEGER DEFAULT 0 CHECK (notifications_received >= 0),
+ADD COLUMN IF NOT EXISTS donations_confirmed INTEGER DEFAULT 0 CHECK (donations_confirmed >= 0);
+
+
+
+
+
+
+ALTER TABLE public.users
+ADD COLUMN IF NOT EXISTS latitude REAL,
+ADD COLUMN IF NOT EXISTS longitude REAL,
+ADD COLUMN IF NOT EXISTS notifications_received INTEGER DEFAULT 0 CHECK (notifications_received >= 0),
+ADD COLUMN IF NOT EXISTS donations_confirmed INTEGER DEFAULT 0 CHECK (donations_confirmed >= 0);
+
+
+
+
+-- ====================================================================
+-- BLOODBRIDGE AI: REALISTIC SEED DATA SCRIPT
+-- ====================================================================
+-- This script will populate the database with a variety of test users,
+-- patients, and scenarios to facilitate development and testing.
+
+BEGIN; -- Start a transaction
+
+-- 1. INSERT Donors (users table)
+-- We will add a mix of available and unavailable donors from different cities.
+INSERT INTO public.users (name, phone, blood_group, city, user_type, role, availability_status, last_donation, gamification_points, streak_count, cooldown_until)
+VALUES
+  ('Priya Sharma', '+919876543210', 'A+', 'Hyderabad', 'donor', 'Emergency Donor', 'available', '2025-01-15', 250, 2, '2025-04-15'),
+  ('Rohan Kumar', '+919876543211', 'O-', 'Mumbai', 'donor', 'Emergency Donor', 'unavailable', '2025-08-20', 150, 1, '2025-11-20'),
+  ('Ananya Reddy', '+919876543212', 'B+', 'Hyderabad', 'donor', 'Emergency Donor', 'available', '2024-12-10', 450, 4, '2025-03-10'),
+  ('Vikram Singh', '+919876543213', 'AB+', 'Delhi', 'donor', 'Emergency Donor', 'available', null, 50, 0, null),
+  ('Nisha Gupta', '+919876543214', 'O+', 'Hyderabad', 'donor', 'Emergency Donor', 'available', '2025-03-01', 350, 3, '2025-06-01');
+
+-- 2. INSERT Patients
+-- Includes one pending verification, and two bridged patients.
+-- ** IMPORTANT: Patient 'Saanvi Gupta' is deliberately set to be DUE for a transfusion. **
+INSERT INTO public.patients (name, phone, blood_group, city, status, last_transfusion_date, frequency_in_days, condition)
+VALUES
+  ('Aarav Sharma', '+918765432101', 'B-', 'Delhi', 'pending_verification', null, null, 'Anemia'),
+  ('Saanvi Gupta', '+918765432102', 'O+', 'Hyderabad', 'bridged', '2025-08-01', 28, 'Thalassemia'),
+  ('Vivaan Patel', '+918765432103', 'A-', 'Mumbai', 'bridged', '2025-08-15', 30, 'Thalassemia');
+
+-- 3. INSERT an Active Emergency Request
+INSERT INTO public.emergency_requests (patient_name, blood_group, units_needed, hospital_name, city, status, requested_by_phone)
+VALUES
+  ('Aditi Rao', 'AB-', 2, 'Apollo Hospital', 'Delhi', 'active', '+917777777777');
+
+-- 4. CREATE Blood Bridges for the "bridged" patients
+-- We need to manually get the UUIDs for the patients we just created.
+-- Let's create bridges for Saanvi and Vivaan.
+INSERT INTO public.blood_bridges (patient_id, name, blood_group, city)
+SELECT id, name || '''s Bridge', blood_group, city FROM public.patients WHERE name IN ('Saanvi Gupta', 'Vivaan Patel');
+
+-- 5. ASSIGN Donors to the Blood Bridges
+-- Assign Priya, Ananya, and Nisha to Saanvi Gupta's bridge.
+-- Note: We need to look up the IDs on the fly.
+INSERT INTO public.bridge_members (bridge_id, donor_id, position)
+SELECT
+  (SELECT id FROM public.blood_bridges WHERE name = 'Saanvi Gupta''s Bridge'),
+  u.id,
+  ROW_NUMBER() OVER (ORDER BY u.gamification_points DESC) as position
+FROM public.users u
+WHERE u.name IN ('Priya Sharma', 'Ananya Reddy', 'Nisha Gupta');
+
+COMMIT; -- Commit all the changes
+
+
+
+
+
+
+
+
+
+-- ====================================================================
+-- CLEANUP SCRIPT
+-- ====================================================================
+-- To delete ONLY the random data added by this script, run the
+-- following commands. This will not delete your original admin user
+-- or other data you may have created manually.
+/* -- UNCOMMENT THE LINES BELOW TO RUN THE CLEANUP SCRIPT
+
+  DELETE FROM public.users WHERE phone LIKE '+91987654321%';
+  DELETE FROM public.patients WHERE phone LIKE '+91876543210%';
+  DELETE FROM public.emergency_requests WHERE patient_name = 'Aditi Rao';
+  -- Deleting patients will automatically cascade and delete bridges/members
+  -- due to the "ON DELETE CASCADE" constraint in the schema.
+
+*/
+
+
+
+
+ALTER TABLE public.blood_bridges
+ADD COLUMN IF NOT EXISTS active_request_id UUID REFERENCES public.emergency_requests(id) ON DELETE SET NULL;
+
+
+
+ALTER TABLE patients ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Seed the knowledge base with comprehensive FAQ data
+INSERT INTO knowledge_base (id, content, category) VALUES
+(1, 'Q: What is Thalassemia? A: Thalassemia is an inherited blood disorder where the body produces less hemoglobin than normal, leading to anemia.', 'Thalassemia'),
+(2, 'Q: What are the popular Thalassemia treatment methods? A: Treatments include regular blood transfusions, iron chelation therapy, folic acid supplements, and in some cases bone marrow transplant.', 'Thalassemia'),
+(3, 'Q: What are the forms of Thalassemia? A: There is Thalassemia Minor (mild, no treatment), Thalassemia Intermedia (moderate, occasional transfusions), and Thalassemia Major (severe, lifelong transfusions).', 'Thalassemia'),
+(9, 'Q: Are there age limits for blood donors? A: Yes, you must be at least 18 years old and no older than 65 to donate blood in India.', 'Eligibility'),
+(10, 'Q: Who can donate blood in India? A: Any healthy adult between 18 and 65 years old with adequate hemoglobin levels, normal blood pressure, and no high-risk conditions can donate.', 'Eligibility'),
+(14, 'Q: How frequently can I donate blood? A: Healthy males can donate every 3 months, while healthy females can donate every 4 months.', 'Eligibility'),
+(15, 'Q: How does the blood donation process work? A: The process takes about one hour and includes a health check, the donation itself (8-10 minutes), and a short rest with refreshments.', 'Process'),
+(18, 'Q: Is it safe to give blood? A: Yes, donating blood is completely safe. All supplies, including needles and bags, are sterile and used only once.', 'Process')
+ON CONFLICT (id) DO UPDATE SET content = EXCLUDED.content, category = EXCLUDED.category;
+
+
+
+
+
+
+-- Seed the knowledge base with comprehensive FAQ data
+INSERT INTO knowledge_base (id, content, category) VALUES
+(1, 'Q: What is Thalassemia? A: Thalassemia is an inherited blood disorder where the body produces less hemoglobin than normal, leading to anemia.', 'Thalassemia'),
+(2, 'Q: What are the popular Thalassemia treatment methods? A: Treatments include regular blood transfusions, iron chelation therapy, folic acid supplements, and in some cases bone marrow transplant.', 'Thalassemia'),
+(9, 'Q: Are there age limits for blood donors? A: Yes, you must be at least 18 years old and no older than 65 to donate blood in India.', 'Eligibility'),
+(15, 'Q: How does the blood donation process work? A: The process takes about one hour and includes a health check, the donation itself (8-10 minutes), and a short rest with refreshments.', 'Process')
+ON CONFLICT (id) DO UPDATE SET content = EXCLUDED.content, category = EXCLUDED.category;
+
+
+
+
+
+
+-- Clear existing test data to prevent duplicates
+DELETE FROM bridge_members;
+DELETE FROM blood_bridges;
+DELETE FROM users WHERE user_type = 'donor';
+DELETE FROM patients;
+
+-- Seed Donors (A diverse set for testing)
+INSERT INTO users (name, phone, blood_group, city, user_type, role, availability_status, last_donation, gamification_points) VALUES
+-- Hyderabad Donors (Mostly available)
+('Priya Rao', '+919876543210', 'O+', 'Hyderabad', 'donor', 'Emergency Donor', 'available', '2025-01-15', 250),
+('Anil Kumar', '+919876543211', 'A+', 'Hyderabad', 'donor', 'Emergency Donor', 'available', '2024-12-10', 150),
+('Sunita Reddy', '+919876543212', 'B+', 'Hyderabad', 'donor', 'Emergency Donor', 'available', '2025-02-20', 300),
+('Vikram Singh', '+919876543213', 'AB+', 'Hyderabad', 'donor', 'Emergency Donor', 'available', '2025-03-05', 50),
+('Meena Kumari', '+919876543214', 'O-', 'Hyderabad', 'donor', 'Emergency Donor', 'available', '2025-04-11', 450),
+('Rajesh Verma', '+919876543215', 'B+', 'Hyderabad', 'donor', 'Emergency Donor', 'available', '2025-01-01', 100),
+
+-- Mumbai Donors (Some on cooldown)
+('Amit Patel', '+919876543220', 'A-', 'Mumbai', 'donor', 'Emergency Donor', 'available', '2024-11-25', 200),
+('Sneha Desai', '+919876543221', 'B-', 'Mumbai', 'donor', 'Emergency Donor', 'available', '2025-02-18', 350),
+('Rohan Mehta', '+919876543222', 'O+', 'Mumbai', 'donor', 'Emergency Donor', 'unavailable', '2025-08-15', 500), -- On Cooldown
+('Pooja Shah', '+919876543223', 'AB-', 'Mumbai', 'donor', 'Emergency Donor', 'available', '2025-03-22', 120),
+('Nikhil Joshi', '+919876543224', 'A+', 'Mumbai', 'donor', 'Emergency Donor', 'unavailable', '2025-07-30', 280), -- On Cooldown
+
+
+
+
+-- Delhi Donors
+('Sanjay Gupta', '+919876543230', 'B+', 'Delhi', 'donor', 'Emergency Donor', 'available', '2025-01-05', 180),
+('Aditi Sharma', '+919876543231', 'O+', 'Delhi', 'donor', 'Emergency Donor', 'available', '2025-04-01', 600),
+('Manish Agarwal', '+919876543232', 'A+', 'Delhi', 'donor', 'Emergency Donor', 'available', '2024-10-15', 220),
+
+-- Bangalore Donors
+('Deepak Krishnan', '+919876543240', 'O-', 'Bangalore', 'donor', 'Emergency Donor', 'available', '2025-03-12', 400),
+('Lakshmi Murthy', '+919876543241', 'B+', 'Bangalore', 'donor', 'Emergency Donor', 'unavailable', '2025-08-25', 330); -- On Cooldown
+
+
+-- Seed Patients (For dashboard monitoring)
+INSERT INTO patients (name, phone, blood_group, city, status, last_transfusion_date, frequency_in_days) VALUES
+('Aarav Sharma', '+918888888801', 'A+', 'Delhi', 'pending_verification', NULL, 21),
+('Saanvi Gupta', '+918888888802', 'O-', 'Mumbai', 'bridged', '2025-08-15', 28), -- Due Soon
+('Vihaan Reddy', '+918888888803', 'B+', 'Bangalore', 'bridged', '2025-07-25', 30), -- Overdue
+('Nisha Menon', '+918888888804', 'AB-', 'Hyderabad', 'bridged', '2025-08-28', 25); -- Not Due Yet
+
+
+
+
+
+-- This adds a new column to store the phone number for easy identification
+ALTER TABLE conversations
+ADD COLUMN user_phone VARCHAR(15);
+
+-- Optional: This adds an index to the new column to make lookups faster
+CREATE INDEX idx_conversations_user_phone ON conversations(user_phone);
+
+
+
+-- 1. Drop the old, incorrect constraint
+ALTER TABLE patients DROP CONSTRAINT patients_status_check;
+
+-- 2. Add the new, correct constraint that includes all necessary statuses
+ALTER TABLE patients ADD CONSTRAINT patients_status_check
+CHECK (status IN ('pending', 'pending_opt_in', 'pending_details', 'pending_verification', 'bridged', 'active'));
+
+
+
+
+-- 1. Drop the old, overly strict constraint from the patients table
+ALTER TABLE public.patients DROP CONSTRAINT valid_blood_group;
+
+-- 2. Add a new, corrected constraint that includes 'N/A' as a valid placeholder
+ALTER TABLE public.patients ADD CONSTRAINT valid_blood_group_check
+CHECK (
+    (blood_group)::text = ANY (
+        ARRAY['A+'::text, 'A-'::text, 'B+'::text, 'B-'::text, 'O+'::text, 'O-'::text, 'AB+'::text, 'AB-'::text, 'N/A'::text]
+    )
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- This command replaces the existing function with a corrected version
+CREATE OR REPLACE FUNCTION find_donors_for_bridge(
+    p_city VARCHAR,
+    p_blood_group VARCHAR,
+    p_pincode VARCHAR,
+    p_limit INTEGER
+)
+RETURNS TABLE (donor_id UUID, final_score FLOAT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        u.id AS donor_id,
+        -- ✅ FIX: Explicitly cast the result to FLOAT to match the return type
+        COALESCE(u.last_ml_score, 0.0)::FLOAT AS final_score
+    FROM users u
+    WHERE
+        u.user_type = 'donor'
+        AND u.city ILIKE p_city
+        AND u.blood_group = p_blood_group
+        AND u.availability_status = 'available'
+        AND u.dnd_status = false
+        AND (u.snooze_until IS NULL OR u.snooze_until < NOW())
+        AND u.registration_status = 'completed'
+        AND u.id NOT IN (
+            SELECT bm.donor_id
+            FROM bridge_members bm
+            JOIN blood_bridges bb ON bm.bridge_id = bb.id
+            WHERE bb.active = true
+        )
+    ORDER BY
+        COALESCE(u.last_ml_score, 0.0) DESC,
+        u.created_at ASC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+
+
+ALTER TABLE public.emergency_requests
+ADD COLUMN patient_id UUID REFERENCES public.patients(id) ON DELETE SET NULL;  
 
 ```
 
@@ -9717,7 +10253,7 @@ CREATE TABLE public.users (
 
 # This should be the same database URL used in your backend/.env file.
 DATABASE_URL="postgresql://postgres.psussvygzgzkkwdjqbwp:asdfusahdfuu3842r7gdsfh@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres"
-GEMINI_API_KEY="AIzaSyAvPuLpiCRezLDdJZt9eqW67vt1_BrG92w"
+GEMINI_API_KEY="AIzaSyD9hUOePwWOrNpaKXG3E3OcD3Q7Q4VZdRM"
 
 ```
 

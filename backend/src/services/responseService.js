@@ -5,6 +5,7 @@ import { generateOTP } from '../utils/otpHelper.js';
 import gamificationService from './gamificationService.js';
 import bridgeService from './bridgeService.js';
 import BridgeCoordinationService from './bridgeCoordinationService.js';
+import emergencyService from './emergencyService.js';
 
 class ResponseService {
     /**
